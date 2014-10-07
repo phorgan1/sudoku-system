@@ -1,0 +1,142 @@
+/*! \mainpage sudoku++
+* \section intro_sec Introduction
+* This project implements a C++ template library for creating representing and solving sudoku boards.
+* \section install_sec Installation
+* You only have to include sudoku.h to use it.
+* \section example
+  \subsection code
+\code{.cpp}
+#include <iostream>
+#include <iomanip>
+#include "sudoku.h"
+void
+print_counts(board<9> &b)
+{
+    std::cout << "counts:\n";
+    std::cout << std::setw(16) << "naked single: " << std::setw(3) << b.get_strategy_count("naked single") << '\n';
+    std::cout << std::setw(16) << "hidden single: " << std::setw(3) << b.get_strategy_count("hidden single") << '\n';
+    std::cout << std::setw(16) << "intersection: " << std::setw(3) << b.get_strategy_count("intersection") << '\n';
+    std::cout << std::setw(16) << "naked double: " << std::setw(3) << b.get_strategy_count("naked double") << '\n';
+    std::cout << std::setw(16) << "hidden double: " << std::setw(3) << b.get_strategy_count("hidden double") << '\n';
+    std::cout << std::setw(16) << "naked triple: " << std::setw(3) << b.get_strategy_count("naked triple") << '\n';
+    std::cout << std::setw(16) << "hidden triple: " << std::setw(3) << b.get_strategy_count("hidden triple") << '\n';
+    std::cout << std::setw(16) << "naked quad: " << std::setw(3) << b.get_strategy_count("naked quad") << '\n';
+    std::cout << std::setw(16) << "hidden quad: " << std::setw(3) << b.get_strategy_count("hidden quad") << '\n';
+    std::cout << std::setw(16) << "x-wing: " << std::setw(3) << b.get_strategy_count("x-wing") << '\n';
+    std::cout << std::setw(16) << "swordfish: " << std::setw(3) << b.get_strategy_count("swordfish") << '\n';
+    std::cout << std::setw(16) << "jellyfish: " << std::setw(3) << b.get_strategy_count("jellyfish") << '\n';
+    std::cout << std::setw(16) << "y-wing: " << std::setw(3) << b.get_strategy_count("y-wing") << '\n';
+}
+int
+main()
+{
+    board<9> b( "000" "079" "065"
+                "000" "003" "002"
+                "005" "060" "093"
+
+                "340" "050" "106"
+                "000" "000" "000"
+                "608" "020" "059"
+
+                "950" "010" "600"
+                "700" "600" "000"
+                "820" "390" "000");
+    b.print_large();
+    b.heuristic_solution();
+    print_counts(b);
+    b.print_large();
+}
+\endcode
+  \subsection results
+\code
+» ./atest
++---+---+---+---+---+---+---+---+---+
+|12 |1 3|123|12 |   |   |   |   |   |
+|4  |   |4  |4  | 7 | 9 |4  | 6 | 5 |
+|   | 8 |   | 8 |   |   | 8 |   |   |
++---+---+---+---+---+---+---+---+---+
+|1  |1  |1  |1  |   |   |   |1  |   |
+|4  |  6|4 6|45 |4  | 3 |4  |4  | 2 |
+|   |789|7 9| 8 | 8 |   |78 |78 |   |
++---+---+---+---+---+---+---+---+---+
+|12 |1  |   |12 |   |12 |   |   |   |
+|4  |   | 5 |4  | 6 |4  |4  | 9 | 3 |
+|   |78 |   | 8 |   | 8 |78 |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   | 2 |   |   |   |   | 2 |   |
+| 3 | 4 |   |   | 5 |   | 1 |   | 6 |
+|   |   |7 9|789|   |78 |   |78 |   |
++---+---+---+---+---+---+---+---+---+
+|12 |1  |12 |1  |  3|1  | 23| 23|   |
+| 5 |   |   |4  |4  |4 6|4  |4  |4  |
+|   |7 9|7 9|789| 8 |78 |78 |78 |78 |
++---+---+---+---+---+---+---+---+---+
+|   |1  |   |1  |   |1  |  3|   |   |
+| 6 |   | 8 |4  | 2 |4  |4  | 5 | 9 |
+|   |7  |   |7  |   |7  |7  |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |  3| 2 |   | 2 |   | 23|   |
+| 9 | 5 |4  |4  | 1 |4  | 6 |4  |4  |
+|   |   |   |78 |   |78 |   |78 |78 |
++---+---+---+---+---+---+---+---+---+
+|   |1 3|1 3|   |   | 2 | 23|123|1  |
+| 7 |   |4  | 6 |4  |45 |45 |4  |4  |
+|   |   |   |   | 8 | 8 | 89| 8 | 8 |
++---+---+---+---+---+---+---+---+---+
+|   |   |1  |   |   |   |   |1  |1  |
+| 8 | 2 |4 6| 3 | 9 |45 |45 |4  |4  |
+|   |   |   |   |   |7  |7  |7  |7  |
++---+---+---+---+---+---+---+---+---+
+counts:
+  naked single:  34
+ hidden single:  17
+  intersection:   0
+  naked double:   0
+ hidden double:   0
+  naked triple:   0
+ hidden triple:   0
+    naked quad:   0
+   hidden quad:   0
+        x-wing:   0
+     swordfish:   0
+     jellyfish:   0
+        y-wing:   0
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 1 | 8 | 3 | 2 | 7 | 9 | 4 | 6 | 5 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 4 | 6 | 9 | 5 | 8 | 3 | 7 | 1 | 2 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 2 | 7 | 5 | 4 | 6 | 1 | 8 | 9 | 3 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 3 | 4 | 2 | 9 | 5 | 8 | 1 | 7 | 6 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 5 | 9 | 7 | 1 | 3 | 6 | 2 | 8 | 4 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 6 | 1 | 8 | 7 | 2 | 4 | 3 | 5 | 9 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 9 | 5 | 4 | 8 | 1 | 2 | 6 | 3 | 7 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 7 | 3 | 1 | 6 | 4 | 5 | 9 | 2 | 8 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   |   |   |
+| 8 | 2 | 6 | 3 | 9 | 7 | 5 | 4 | 1 |
+|   |   |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+---+
+\endcode
+*/
