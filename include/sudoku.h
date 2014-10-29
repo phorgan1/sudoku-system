@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <algorithm>
 #include <ncurses.h>
+#include <exception>
 
 // the escape sequences seen below are recognized by most terminals in linux to
 // make text bold and to stop bolding text.  This allows us to give more 
@@ -21,7 +22,7 @@
 // want to capture output in a text file, however, it might look like a bunch
 // of gobbledegook in your editor.  At that point you might want to comment
 // out the next line.
-//#define USE_TTY_BOLD
+#define USE_TTY_BOLD
 #ifdef USE_TTY_BOLD
     const char bold[]={ 27,'[','1','m',0 };
     const char unbold[]={ 27,'[','0','m',0 };
@@ -564,8 +565,13 @@ public:
      */
     ssize_t
     operator[](size_t which){
+	if(which>=pvals.size()) std::cout << "Found -1\n";
 	return which<pvals.size()?pvals[which]:-1;
     }
+    //size_t
+    //operator[](size_t which){
+	//return which<pvals.size();
+    //}
     //! returns size of pvals
     size_t
     size(){return pvals.size();};
@@ -1806,6 +1812,8 @@ public:
     template<const unsigned int>
     friend
     std::ostream& operator<<(std::ostream&,symtype);
+    class board_shortstring: public std::exception{};
+    class board_longstring: public std::exception{};
     board(); //!< default constructor
     board(std::string);//!<constructor which takes list of values and blanks
     board(const board&); //!< copy constructor
@@ -1843,10 +1851,10 @@ public:
     inline
     dig_one(size_t row,size_t col, board& brd, symtype st);
     bool
-    dig_puzzle(symtype,size_t,bool);
+    dig_puzzle(symtype,size_t max_clues=32,bool status=false);
     //! generate possible values for one square at row and col
     void
-    generate_pvals(unsigned int row, unsigned int col,bool);
+    generate_pvals(unsigned int row, unsigned int col,bool mark_invalid=true);
     //! update data structure which keeps track of maps of values to squares
     void
     update_possibilities();
@@ -1862,13 +1870,13 @@ public:
     update_pvals_for_square(size_t row, size_t col);
     //! remove set values in square's column from pvals
     void
-    prune_column_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool);
+    prune_column_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
     //! remove set values in square's row from pvals
     void
-    prune_row_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool);
+    prune_row_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
     //! remove set values in square's block from pvals
     void
-    prune_block_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool);
+    prune_block_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
     //! Check if square at row and col has pvals equal to input set pvs
     bool
     check_pval_set(size_t row,size_t col,std::set<size_t>pvs){
@@ -1888,10 +1896,10 @@ public:
     brute_force_solution();
     //! solve the puzzle using a brute force solution with back up and try alternatives.
     size_t
-    brute_force_check(bool);
+    brute_force_check(bool stopafter2=true);
     //! solve the puzzle by trying the same things a person would do
     bool
-    heuristic_solution(bool);
+    heuristic_solution(bool preserve_pvals=false);
     //! return number of set squares
     size_t
     count();
@@ -2002,7 +2010,7 @@ public:
     dump_block_possibilities(size_t row);
     //! return a set of all squares in the same row, column, or block as sq possibly filtered
     std::set<square*>
-    get_neighbors(square* sq,bool (square::*)(square*),bool);
+    get_neighbors(square* sq,bool (square::*)(square*)=&square::true_filt,bool not_self=true);
     operator std::string();
     
 private:
@@ -2011,7 +2019,7 @@ private:
     clear_pval_val(size_t row,size_t col,size_t val);
     //! Wrapper around square::set_val(val,set_pval) which keeps count in sync
     void
-    set_val(size_t row,size_t col,size_t val,bool set_pval);
+    set_val(size_t row,size_t col,size_t val,bool set_pval=true);
     //! purge all vals in set s from the square[row][col]
     bool
     purge_set(size_t row, size_t col, std::set<size_t> s);
@@ -2116,7 +2124,7 @@ operator<<(std::ostream& os,typename board<N>::symtype st)
  */
 template<const unsigned int N>
 std::set<square*>
-board<N>::get_neighbors(square* sq,bool (square::*fn)(square*)=&square::true_filt,bool not_self=true)
+board<N>::get_neighbors(square* sq,bool (square::*fn)(square*),bool not_self)
 {
     std::set<square*> sr;
     size_t row=sq->get_row();
@@ -3220,7 +3228,7 @@ board<N>::xy_chain_apply(std::vector<square*> &chain)
 	    << 'r' << chain[i]->get_row()
 	    << 'c' << chain[i]->get_column()
 	    << " {";
-	if(lo==(*chain[i])[0]){
+	if(lo==static_cast<size_t>((*chain[i])[0])){
 	    std::cout << "|" << (*chain[i])[0] << "|"
 	    << "," << (*chain[i])[1] << "} ";
 	}else{
@@ -3246,9 +3254,9 @@ board<N>::xy_chain_apply(std::vector<square*> &chain)
 	    XY_CHAIN_DEBUG std::cout << "NOT FOUND IN CHAIN ALREADY\n";
 	    // only look if cand square not already in chain to avoid loops
 	    XY_CHAIN_DEBUG std::cout << "last owned: " << last_owned << '\n';
-	    if((*sq)[0]==last_owned){
+	    if(static_cast<size_t>((*sq)[0])==last_owned){
 		sq->set_owned(1);
-	    }else if((*sq)[1]==last_owned){
+	    }else if(static_cast<size_t>((*sq)[1])==last_owned){
 		sq->set_owned(0);
 	    }else{
 		// should never happen
@@ -3278,7 +3286,7 @@ board<N>::xy_chain_apply(std::vector<square*> &chain)
 				    << 'r' << chain[i]->get_row()+1
 				    << 'c' << chain[i]->get_column()+1
 				    << "{";
-				if(lo==(*chain[i])[0]){
+				if(lo==static_cast<size_t>((*chain[i])[0])){
 				    std::cout << "|" << (*chain[i])[0] << "|"
 				    << "," << (*chain[i])[1] << "} ";
 				}else{
@@ -3314,7 +3322,7 @@ board<N>::xy_chain_apply(std::vector<square*> &chain)
 				    << 'r' << chain[i]->get_row()+1
 				    << 'c' << chain[i]->get_column()+1
 				    << "{";
-				if(lo==(*chain[i])[0]){
+				if(lo==static_cast<size_t>((*chain[i])[0])){
 				    std::cout << "|" << (*chain[i])[0] << "|"
 				    << "," << (*chain[i])[1] << "} ";
 				}else{
@@ -3425,7 +3433,9 @@ board<N>::board(std::string in)
     suppress_output=true;
     BOARD_CONSTRUCT_DEBUG std::cerr << "~~~ board(std::string in)\n";
     init();
-    assert(N*N==in.size());
+    //assert(N*N==in.size());
+    if(N*N>in.size()) throw board_shortstring();
+    if(N*N<in.size()) throw board_longstring();
     for(size_t ctr=0;ctr<N*N;ctr++){
 	size_t row=ctr/N, col=ctr%N;
 
@@ -3665,7 +3675,7 @@ board<N>::print_large(){
 		    }
 		}
 	    }
-	    std::cerr << "|\n";
+	    std::cerr << bold << "|\n" << unbold;
 	}
 	if(!((row+1)%root)){
 	    std::cerr << bold << bdr << unbold << "\n";
@@ -3714,7 +3724,7 @@ board<N>::print_just_pvals(){
 template<const unsigned int N>
 inline
 void
-board<N>::prune_column_pvals(unsigned int row, unsigned int col, std::vector<unsigned int> &pv,bool mark_invalid=true)
+board<N>::prune_column_pvals(unsigned int row, unsigned int col, std::vector<unsigned int> &pv,bool mark_invalid)
 {
     /*
      * given a cell at (col,row), walks the column and pulls any values found in
@@ -3748,7 +3758,7 @@ board<N>::prune_column_pvals(unsigned int row, unsigned int col, std::vector<uns
 template<const unsigned int N>
 inline
 void
-board<N>::prune_row_pvals(unsigned int row, unsigned int col, std::vector<unsigned int> &pv,bool mark_invalid=true)
+board<N>::prune_row_pvals(unsigned int row, unsigned int col, std::vector<unsigned int> &pv,bool mark_invalid)
 {
     /*
      * given a cell at (col,row), walks the row and pulls any values found in
@@ -3791,7 +3801,7 @@ board<N>::prune_row_pvals(unsigned int row, unsigned int col, std::vector<unsign
 template<const unsigned int N>
 inline
 void
-board<N>::prune_block_pvals(unsigned int row, unsigned int col, std::vector<unsigned int> &pv,bool mark_invalid=true)
+board<N>::prune_block_pvals(unsigned int row, unsigned int col, std::vector<unsigned int> &pv,bool mark_invalid)
 {
     size_t row_min=root*(row/root), row_max=row_min+root,
 	   col_min=root*(col/root), col_max=col_min+root;
@@ -4000,7 +4010,7 @@ board<N>::reduce_to_set(std::set<square*>& sqs,std::set<size_t>& vals)
 
 template<const unsigned int N>
 void
-board<N>::set_val(size_t row, size_t col,size_t val,bool set_pval=true)
+board<N>::set_val(size_t row, size_t col,size_t val,bool set_pval)
 {
     /*! This is intended to be the only place that board sets values, so that
      * count can be kept accurate.
@@ -4515,7 +4525,7 @@ board<N>::update_pvals()
  */
 template<const unsigned int N>
 void
-board<N>::generate_pvals(unsigned int row, unsigned int col,bool mark_invalid=true)
+board<N>::generate_pvals(unsigned int row, unsigned int col,bool mark_invalid)
 {
     std::vector<unsigned int> tpval;
     GENPVALS_DEBUG std::cerr << "generate_pvals() before: " << b[row][col];
@@ -4928,7 +4938,7 @@ axis.
  */
 template<const unsigned int N>
 bool
-board<N>::dig_puzzle(symtype st,size_t max_clues=32,bool status=false)
+board<N>::dig_puzzle(symtype st,size_t max_clues,bool status)
 {
     DIG_DEBUG std::cerr << "dig_puzzle(";
     DIG_DEBUG print_st(std::cerr,st);
@@ -5044,7 +5054,7 @@ board<N>::count()
  */
 template<const unsigned int N>
 bool
-board<N>::heuristic_solution(bool preserve_pvals=false)
+board<N>::heuristic_solution(bool preserve_pvals)
 {
     HEURISTIC_DEBUG std::cerr << "heuristic_solution()\n";
 
@@ -5376,7 +5386,7 @@ board<N>::brute_force_solution()
  */
 template<const unsigned int N>
 size_t
-board<N>::brute_force_check(bool stopafter2=true)
+board<N>::brute_force_check(bool stopafter2)
 {
     BRUTE_CHECK_DEBUG std::cerr << "brute force check ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     BRUTE_CHECK_DEBUG std::cerr << "brute_force_check() got this board: \n";

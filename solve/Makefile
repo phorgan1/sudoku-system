@@ -4,7 +4,7 @@ CFLAGS=-ggdb -Wall -Wextra -pedantic -Wconversion -Wfloat-equal -Wshadow -Wmissi
 CPPFLAGS=-ggdb -pedantic -Wextra -Wwrite-strings -Wformat=2 -Wall -fstrict-aliasing -Wstrict-aliasing=3 -std=c++0x -I../include
 #CPPFLAGS=-ggdb -fno-inline -pedantic -Wextra -Wwrite-strings -Wformat=2 -Wall -fstrict-aliasing -O3 -Wstrict-aliasing=3 -std=c++0x -I../include
 #allbins=solve test daily brute_check brute_solve mine atest book
-allbins=daily book test solve brute_check mine atest brute_solve
+allbins=daily book test solve brute_check mine atest brute_solve solvearg
 all: $(allbins)
 
 clean:
@@ -17,3 +17,4 @@ brute_check: brute_check.cpp ../include/sudoku.h
 brute_solve: brute_solve.cpp ../include/sudoku.h
 mine: mine.cpp ../include/sudoku.h
 atest: atest.cpp ../include/sudoku.h
+solvearg: solvearg.cpp ../include/sudoku.h
