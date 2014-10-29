@@ -2,25 +2,6 @@
 #include <sudoku.h>
 
 const size_t sz=9;
-void
-print_counts(board<sz> &b)
-{
-    std::cout << "  counts:\n";
-    std::cout << "   naked single: " << b.get_strategy_count("naked single") << '\n';
-    std::cout << "   hidden single: " << b.get_strategy_count("hidden single") << '\n';
-    std::cout << "   intersection: " << b.get_strategy_count("intersection") << '\n';
-    std::cout << "   naked double: " << b.get_strategy_count("naked double") << '\n';
-    std::cout << "   hidden double: " << b.get_strategy_count("hidden double") << '\n';
-    std::cout << "   naked triple: " << b.get_strategy_count("naked triple") << '\n';
-    std::cout << "   hidden triple: " << b.get_strategy_count("hidden triple") << '\n';
-    std::cout << "   naked quad: " << b.get_strategy_count("naked quad") << '\n';
-    std::cout << "   hidden quad: " << b.get_strategy_count("hidden quad") << '\n';
-    std::cout << "   x-wing: " << b.get_strategy_count("x-wing") << '\n';
-    std::cout << "   swordfish: " << b.get_strategy_count("swordfish") << '\n';
-    std::cout << "   jellyfish: " << b.get_strategy_count("jellyfish") << '\n';
-    std::cout << "   y-wing: " << b.get_strategy_count("y-wing") << '\n';
-    std::cout << "   xy-chain: " << b.get_strategy_count("xy-chain") << '\n';
-}
 
 int
 main()
@@ -107,7 +88,7 @@ main()
 	}else{
 	    std::cout << "valid but not solved puzzle\n";
 	}
-	print_counts(*b);
+	b->print_counts();
 	//board<sz> *bf=new board<sz>(tests[ctr]);
 	//bf->brute_force_solution();
 	//bf->print();

@@ -31,7 +31,8 @@
     const char *unbold="";
 #endif
 
-#define SHOW_RESPATH // N.B. all RESPATH print 1 based, not 0 based
+// RESPATH shows all the solution steps if defined
+//#define SHOW_RESPATH // N.B. all RESPATH print 1 based, not 0 based
 
 // uncomment appropriate SHOW_XXX lines below to see debugging information about
 // the corresponding section
@@ -1821,6 +1822,8 @@ public:
     board&
     operator=(const board&); //!< assignment operator
     void
+    print_counts();
+    void
     print(); //!< print to std::cerr a simple representation of the board
     void
     print_large(); //!< print to std::cerr the values and pvals
@@ -2290,7 +2293,7 @@ board<N>::get_squares(grouptype what,size_t which)
  */
 template<const unsigned int N>
 bool
-#if defined(RESPATH)
+#if defined(SHOW_RESPATH)
 board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& possibilities,grouptype gt)
 #else
 board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& possibilities)
@@ -2410,6 +2413,7 @@ board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& po
 				    break;
 			    }
 			    std::cerr << "-in-a-";
+#if defined(SHOW_RESPATH)
 			    switch(gt){
 				case GT_ROW:
 				    std::cerr << "row";
@@ -2421,6 +2425,7 @@ board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& po
 				    std::cerr << "block";
 				    break;
 			    }
+#endif
 			    std::cerr << " {";
 			    std::set<size_t>::iterator it;
 			    bool first_time=true;
@@ -2433,6 +2438,7 @@ board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& po
 			    }
 			    std::cerr << "}";
 			    std::set<square *>::iterator sit;
+#if defined(SHOW_RESPATH)
 			    switch(gt){
 				case GT_ROW:
 				    std::cerr << "r" << (*(sets[d].begin()))->get_row()+1;
@@ -2469,6 +2475,7 @@ board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& po
 				    }
 				    std::cerr << "}";
 			    }
+#endif
 			}
 			// get rid of any thing not in set of vals, i.e. turns
 			// a hidden triple to a naked triple.
@@ -2637,6 +2644,7 @@ board<N>::discern_naked(size_t depth, std::vector<square*> sqs)
 				break;
 			}
 			std::cerr << "-in-a-";
+#if defined(SHOW_RESPATH)
 			switch(gt){
 			    case GT_ROW:
 				std::cerr << "row";
@@ -2648,6 +2656,7 @@ board<N>::discern_naked(size_t depth, std::vector<square*> sqs)
 				std::cerr << "block";
 				break;
 			}
+#endif
 			std::cerr << " {";
 			std::set<size_t>::iterator it;
 			bool first_time=true;
@@ -2659,6 +2668,8 @@ board<N>::discern_naked(size_t depth, std::vector<square*> sqs)
 			    std::cerr << "n" << *it;
 			}
 			std::cerr << "}";
+
+#if defined(SHOW_RESPATH)
 			switch(gt){
 			    case GT_ROW:
 				{
@@ -2708,6 +2719,7 @@ board<N>::discern_naked(size_t depth, std::vector<square*> sqs)
 				}
 				break;
 			}
+#endif
 			std::cerr << " ==>";
 		    }
 		    bool did_something=purge_from_set(sq_set, sets[d]);
@@ -2978,7 +2990,7 @@ board<N>::hidden_apply(size_t level)
     HIDDEN_APPLY_DEBUG std::cerr << "  checking rows for hidden level: " << level << "\n";
     for(size_t row=0;row<N;row++){
 	HIDDEN_APPLY_DEBUG std::cerr << "    row: " << row << '\n';
-#if defined(RESPATH)
+#if defined(SHOW_RESPATH)
 	if(discern_hidden(level, get_possibilities(GT_ROW,row),GT_ROW)){
 #else
 	if(discern_hidden(level, get_possibilities(GT_ROW,row))){
@@ -2991,7 +3003,7 @@ board<N>::hidden_apply(size_t level)
     HIDDEN_APPLY_DEBUG std::cerr << "  checking columns for hidden level: " << level << "\n";
     for(size_t col=0;col<N;col++){
 	HIDDEN_APPLY_DEBUG std::cerr << "    col: " << col << '\n';
-#if defined(RESPATH)
+#if defined(SHOW_RESPATH)
 	if(discern_hidden(level, get_possibilities(GT_COLUMN,col),GT_COLUMN)){
 #else
 	if(discern_hidden(level, get_possibilities(GT_COLUMN,col))){
@@ -3004,7 +3016,7 @@ board<N>::hidden_apply(size_t level)
     HIDDEN_APPLY_DEBUG std::cerr << "  checking blocks for hidden level: " << level << "\n";
     for(size_t block=0;block<N;block++){
 	HIDDEN_APPLY_DEBUG std::cerr << "    block: " << block << '\n';
-#if defined(RESPATH)
+#if defined(SHOW_RESPATH)
 	if(discern_hidden(level, get_possibilities(GT_BLOCK,block),GT_BLOCK)){
 #else
 	if(discern_hidden(level, get_possibilities(GT_BLOCK,block))){
@@ -3599,6 +3611,26 @@ board<N>::is_solved()
     retval=retval && validate_blocks();
     return retval; 
     
+}
+
+template<const unsigned int N>
+void
+board<N>::print_counts()
+{
+    std::cout << "counts:\n";
+    std::cout << std::setw(16) << "naked single: " << std::setw(3) << get_strategy_count("naked single") << '\n';
+    std::cout << std::setw(16) << "hidden single: " << std::setw(3) << get_strategy_count("hidden single") << '\n';
+    std::cout << std::setw(16) << "intersection: " << std::setw(3) << get_strategy_count("intersection") << '\n';
+    std::cout << std::setw(16) << "naked double: " << std::setw(3) << get_strategy_count("naked double") << '\n';
+    std::cout << std::setw(16) << "hidden double: " << std::setw(3) << get_strategy_count("hidden double") << '\n';
+    std::cout << std::setw(16) << "naked triple: " << std::setw(3) << get_strategy_count("naked triple") << '\n';
+    std::cout << std::setw(16) << "hidden triple: " << std::setw(3) << get_strategy_count("hidden triple") << '\n';
+    std::cout << std::setw(16) << "naked quad: " << std::setw(3) << get_strategy_count("naked quad") << '\n';
+    std::cout << std::setw(16) << "hidden quad: " << std::setw(3) << get_strategy_count("hidden quad") << '\n';
+    std::cout << std::setw(16) << "x-wing: " << std::setw(3) << get_strategy_count("x-wing") << '\n';
+    std::cout << std::setw(16) << "swordfish: " << std::setw(3) << get_strategy_count("swordfish") << '\n';
+    std::cout << std::setw(16) << "jellyfish: " << std::setw(3) << get_strategy_count("jellyfish") << '\n';
+    std::cout << std::setw(16) << "y-wing: " << std::setw(3) << get_strategy_count("y-wing") << '\n';
 }
 
 template<const unsigned int N>

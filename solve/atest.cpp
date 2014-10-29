@@ -1,24 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include "sudoku.h"
-void
-print_counts(board<9> &b)
-{
-    std::cout << "counts:\n";
-    std::cout << std::setw(16) << "naked single: " << std::setw(3) << b.get_strategy_count("naked single") << '\n';
-    std::cout << std::setw(16) << "hidden single: " << std::setw(3) << b.get_strategy_count("hidden single") << '\n';
-    std::cout << std::setw(16) << "intersection: " << std::setw(3) << b.get_strategy_count("intersection") << '\n';
-    std::cout << std::setw(16) << "naked double: " << std::setw(3) << b.get_strategy_count("naked double") << '\n';
-    std::cout << std::setw(16) << "hidden double: " << std::setw(3) << b.get_strategy_count("hidden double") << '\n';
-    std::cout << std::setw(16) << "naked triple: " << std::setw(3) << b.get_strategy_count("naked triple") << '\n';
-    std::cout << std::setw(16) << "hidden triple: " << std::setw(3) << b.get_strategy_count("hidden triple") << '\n';
-    std::cout << std::setw(16) << "naked quad: " << std::setw(3) << b.get_strategy_count("naked quad") << '\n';
-    std::cout << std::setw(16) << "hidden quad: " << std::setw(3) << b.get_strategy_count("hidden quad") << '\n';
-    std::cout << std::setw(16) << "x-wing: " << std::setw(3) << b.get_strategy_count("x-wing") << '\n';
-    std::cout << std::setw(16) << "swordfish: " << std::setw(3) << b.get_strategy_count("swordfish") << '\n';
-    std::cout << std::setw(16) << "jellyfish: " << std::setw(3) << b.get_strategy_count("jellyfish") << '\n';
-    std::cout << std::setw(16) << "y-wing: " << std::setw(3) << b.get_strategy_count("y-wing") << '\n';
-}
+
 int
 main()
 {
@@ -44,12 +27,13 @@ main()
     //board<9> b(".51..9.2.....2.5..4..5...7.8.976......5...6......953.8.4...6..5..3.4.....9.1..24.");
     //board<9> b("1..4....339.1.674.7.43.569.5..712..4.7.5.....4..86...79436.18.22679.8.3.8512.....");
     //board<9> b("1.8..2...4.58.9....32.7.9..52.73.................25.67..3.8.69....6.78.....9..4..");
-      board<9> b("71..235......47...6.4..5.2926.......4.......1.......4654.1..8.2...59......847..15");
+      //board<9> b("71..235......47...6.4..5.2926.......4.......1.......4654.1..8.2...59......847..15");
+      board<9> b("7.9..23.....1..8..1.5..94..9.3....1....6.5....7....2.3..64..1.8..7..1.....15..9.7");
 
     b.print_large();
     b.heuristic_solution();
     //b.brute_force_solution();
     b.print_large();
     b.print();
-    print_counts(b);
+    b.print_counts();
 }

@@ -3,25 +3,6 @@
 
 const size_t sz=9;
 
-void
-print_counts(board<sz> &b)
-{
-    std::cout << "  counts\n";
-    std::cout << "   naked single: " << b.get_strategy_count("naked single") << '\n';
-    std::cout << "   hidden single: " << b.get_strategy_count("hidden single") << '\n';
-    std::cout << "   intersection: " << b.get_strategy_count("intersection") << '\n';
-    std::cout << "   naked double: " << b.get_strategy_count("naked double") << '\n';
-    std::cout << "   hidden double: " << b.get_strategy_count("hidden double") << '\n';
-    std::cout << "   naked triple: " << b.get_strategy_count("naked triple") << '\n';
-    std::cout << "   hidden triple: " << b.get_strategy_count("hidden triple") << '\n';
-    std::cout << "   naked quad: " << b.get_strategy_count("naked quad") << '\n';
-    std::cout << "   hidden quad: " << b.get_strategy_count("hidden quad") << '\n';
-    std::cout << "   x-wing: " << b.get_strategy_count("x-wing") << '\n';
-    std::cout << "   y-wing: " << b.get_strategy_count("y-wing") << '\n';
-    std::cout << "   swordfish: " << b.get_strategy_count("swordfish") << '\n';
-    std::cout << "   jellyfish: " << b.get_strategy_count("jellyfish") << '\n';
-}
-
 int
 main()
 {
@@ -35,13 +16,13 @@ main()
     if(b1.get_strategy_count("naked single")!=1){
 	std::cerr << "failed: expected naked single count of 1\n";
 	b1.print_large();
-	print_counts(b1);
+	b1.print_counts();
 	exit(1);
     }
     if(b1.get_val(0,0)!=1){
 	std::cerr << "failed: expected row 0, col 0, set to value 1\n";
 	b1.print_large();
-	print_counts(b1);
+	b1.print_counts();
 	exit(1);
     }
     for(size_t ctr=1;ctr<9;ctr++){
@@ -98,13 +79,13 @@ main()
     if(b2.get_strategy_count("hidden single")!=1){
 	std::cerr << "failed: expected hidden single count of 1\n";
 	b2.print_large();
-	print_counts(b2);
+	b2.print_counts();
 	exit(1);
     }
     if(b2.get_val(0,8)!=3){
 	std::cerr << "failed: expected row 0, col 8, set to value 3\n";
 	b2.print_large();
-	print_counts(b2);
+	b2.print_counts();
 	exit(1);
     }
 	    //if(  !b1.check_pval_set(row,col,{1,2,3,4,5,6,7,8,9})){
@@ -126,7 +107,7 @@ main()
     if(b3.get_strategy_count("hidden single")!=1){
 	std::cerr << "failed: expected hidden single count of 1\n";
 	b3.print_large();
-	print_counts(b3);
+	b3.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -147,7 +128,7 @@ main()
     if(b4.get_strategy_count("hidden single")!=1){
 	std::cerr << "failed: expected hidden single count of 1\n";
 	b4.print_large();
-	print_counts(b4);
+	b4.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -162,7 +143,7 @@ main()
     if(b5.get_strategy_count("naked double")!=1){
 	std::cout << "failed: expected naked double count of 1\n";
 	b5.print_large();
-	print_counts(b5);
+	b5.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -177,7 +158,7 @@ main()
     if(b6.get_strategy_count("naked double")!=1){
 	std::cout << "failed: expected naked double count of 1\n";
 	b6.print_large();
-	print_counts(b6);
+	b6.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -192,7 +173,7 @@ main()
     if(b7.get_strategy_count("naked double")!=1){
 	std::cout << "failed: expected naked double count of 1\n";
 	b7.print_large();
-	print_counts(b7);
+	b7.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -214,7 +195,7 @@ main()
     if(b8.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
 	b8.print_large();
-	print_counts(b8);
+	b8.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -236,7 +217,7 @@ main()
     if(b9.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
 	b9.print_large();
-	print_counts(b9);
+	b9.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -258,7 +239,7 @@ main()
     if(b10.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
 	b10.print_large();
-	print_counts(b10);
+	b10.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -280,7 +261,7 @@ main()
     if(b11.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
 	b11.print_large();
-	print_counts(b11);
+	b11.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -295,7 +276,7 @@ main()
     if(b12.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
 	b12.print_large();
-	print_counts(b12);
+	b12.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -310,7 +291,7 @@ main()
     if(b13.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
 	b13.print_large();
-	print_counts(b13);
+	b13.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -326,7 +307,7 @@ main()
     if(b14.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
 	b14.print_large();
-	print_counts(b14);
+	b14.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -342,7 +323,7 @@ main()
     if(b15.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
 	b15.print_large();
-	print_counts(b15);
+	b15.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -364,7 +345,7 @@ main()
     if(b16.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
 	b16.print_large();
-	print_counts(b16);
+	b16.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -383,7 +364,7 @@ main()
     if(b17.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
 	b17.print_large();
-	print_counts(b17);
+	b17.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -402,7 +383,7 @@ main()
     if(b18.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
 	b18.print_large();
-	print_counts(b18);
+	b18.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -421,7 +402,7 @@ main()
     if(b19.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
 	b19.print_large();
-	print_counts(b19);
+	b19.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -438,7 +419,7 @@ main()
     if(b20.get_strategy_count("naked quad")!=1){
 	std::cout << "failed: expected naked quad count of 1\n";
 	b20.print_large();
-	print_counts(b20);
+	b20.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -455,7 +436,7 @@ main()
     if(b21.get_strategy_count("naked quad")!=1){
 	std::cout << "failed: expected naked quad count of 1\n";
 	b21.print_large();
-	print_counts(b21);
+	b21.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -472,7 +453,7 @@ main()
     if(b22.get_strategy_count("naked quad")!=1){
 	std::cout << "failed: expected naked quad count of 1\n";
 	b22.print_large();
-	print_counts(b22);
+	b22.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -490,7 +471,7 @@ main()
     if(b23.get_strategy_count("hidden quad")!=1){
 	std::cout << "failed: expected hidden quad count of 1\n";
 	b23.print_large();
-	print_counts(b23);
+	b23.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -521,7 +502,7 @@ main()
     if(b24.get_strategy_count("x-wing")!=1){
 	std::cout << "failed: expected x-wing count of 1\n";
 	b24.print_large();
-	print_counts(b24);
+	b24.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -552,7 +533,7 @@ main()
     if(b25.get_strategy_count("x-wing")!=1){
 	std::cout << "failed: expected x-wing count of 1\n";
 	b25.print_large();
-	print_counts(b25);
+	b25.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -567,7 +548,7 @@ main()
     if(b35.get_strategy_count("y-wing")!=1){
 	std::cout << "failed: expected y-wing count of 1\n";
 	b35.print_large();
-	print_counts(b35);
+	b35.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -609,7 +590,7 @@ main()
     if(b36.get_strategy_count("swordfish")!=1){
 	std::cout << "failed: expected swordfish count of 1\n";
 	b36.print_large();
-	print_counts(b36);
+	b36.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -652,7 +633,7 @@ main()
     if(b37.get_strategy_count("swordfish")!=1){
 	std::cout << "failed: expected swordfish count of 1\n";
 	b37.print_large();
-	print_counts(b37);
+	b37.print_counts();
 	exit(1);
     }
     for(size_t col=0;col<9;col++){
@@ -674,7 +655,7 @@ main()
 		   || !b37.check_pval_set(8,col,{1,2,3,5,6,7,8,9})) {
 		    std::cout << "failed: swordfish found, but target val, (4), not properly cleared out of columns 1,2,4,5,6, and 8 of rows 2, 5, and 8\n";
 		    b37.print_large();
-		    print_counts(b37);
+		    b37.print_counts();
 		}
 		break;
 	    case 0:
@@ -689,7 +670,7 @@ main()
 		   || !b37.check_pval_set(8,col,{1,2,3,4,5,6,7,8,9})) {
 		    std::cout << "failed: swordfish found, something happened in column 0 which is supposed to have 4 only in rows 5, and 8\n";
 		    b37.print_large();
-		    print_counts(b37);
+		    b37.print_counts();
 		}
 		break;
 	    case 3:
@@ -705,7 +686,7 @@ main()
 		   || !b37.check_pval_set(8,col,{1,2,3,4,5,6,7,8,9})) {
 		    std::cout << "failed: swordfish found, something happened in columns 3 and 7 which are supposed to have 4 only in rows 2, 5, and 8\n";
 		    b37.print_large();
-		    print_counts(b37);
+		    b37.print_counts();
 		}
 		break;
 	    default:
@@ -762,7 +743,7 @@ main()
     if(b38.get_strategy_count("jellyfish")!=1){
 	std::cout << "failed: expected jellyfish count of 1\n";
 	b38.print_large();
-	print_counts(b38);
+	b38.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -784,7 +765,7 @@ main()
     if(b26.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
 	b26.print_large();
-	print_counts(b26);
+	b26.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -806,7 +787,7 @@ main()
     if(b27.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
 	b27.print_large();
-	print_counts(b27);
+	b27.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -828,7 +809,7 @@ main()
     if(b28.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
 	b28.print_large();
-	print_counts(b28);
+	b28.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
@@ -850,7 +831,7 @@ main()
     if(b29.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
 	b29.print_large();
-	print_counts(b29);
+	b29.print_counts();
 	exit(1);
     }
     std::cout << "passed\n";
