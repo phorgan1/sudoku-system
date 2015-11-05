@@ -16,12 +16,12 @@ main()
 	{".......12....35......6...7.7.....3.....4..8..1...........12.....8.....4..5....6..", "Royle17-92" }
 
     };
-    for(size_t ctr=0;ctr<vtests.size();ctr++){
-	board<sz> *b=new board<sz>(vtests[ctr].tst);
+    for(auto test : vtests){
+	board<sz> *b=new board<sz>(test.tst);
 	b->print();
 	b->heuristic_solution();
 	b->print();
-	std::cout << vtests[ctr].name << '\n';
+	std::cout << test.name << '\n';
 	if(!b->get_valid()){
 	    std::cout << "Bad puzzle\n";
 	}else if(b->is_solved()){
@@ -32,8 +32,8 @@ main()
 	}
 	b->print_counts();
 	std::cout << "count: " << b->count() << '\n';
-	std::cout << "get_count: " << b->get_count() << '\n';
 	std::cout << std::endl;
+	delete b;
     }
-    exit(0);
+    return 0;
 }

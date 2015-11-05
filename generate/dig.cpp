@@ -3,25 +3,6 @@
 
 const size_t sz=9;
 
-void
-print_counts(board<sz> &b)
-{
-    std::cerr << "  counts:\n";
-    std::cerr << "   naked single: " << b.get_strategy_count("naked single") << '\n';
-    std::cerr << "   hidden single: " << b.get_strategy_count("hidden single") << '\n';
-    std::cerr << "   intersection: " << b.get_strategy_count("intersection") << '\n';
-    std::cerr << "   naked double: " << b.get_strategy_count("naked double") << '\n';
-    std::cerr << "   hidden double: " << b.get_strategy_count("hidden double") << '\n';
-    std::cerr << "   naked triple: " << b.get_strategy_count("naked triple") << '\n';
-    std::cerr << "   hidden triple: " << b.get_strategy_count("hidden triple") << '\n';
-    std::cerr << "   naked quad: " << b.get_strategy_count("naked quad") << '\n';
-    std::cerr << "   hidden quad: " << b.get_strategy_count("hidden quad") << '\n';
-    std::cerr << "   x-wing: " << b.get_strategy_count("x-wing") << '\n';
-    std::cerr << "   swordfish: " << b.get_strategy_count("swordfish") << '\n';
-    std::cerr << "   jellyfish: " << b.get_strategy_count("jellyfish") << '\n';
-    std::cerr << "   y-wing: " << b.get_strategy_count("y-wing") << '\n';
-}
-
 int
 main()
 {
@@ -70,35 +51,32 @@ main()
     // ST_ADIAG - also dig cell reflected about the anti-diagonal
     // ST_MADIAG- dig the three cells resultant from the combinations of
     //            reflections about both diagonals
+    // dig_puzzle generates and digs
     //b.dig_puzzle(board<sz>::symtype(board<sz>::ST_HORIZ|board<sz>::ST_VERT),32);
-    while(true){
+    for(size_t ctr=0;ctr<2;ctr++){
 	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_NONE),30);
-	b.dig_puzzle(board<sz>::symtype(board<sz>::ST_HV|board<sz>::ST_MADIAG),30,true);
-//	b.dig_puzzle(board<sz>::ST_HV,30,true);
+	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_HV|board<sz>::ST_MADIAG),30,true);
+	b.dig_puzzle(board<sz>::ST_HV,27,true);
 	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_MDIAG|board<sz>::ST_ADIAG),31);
-	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_ROT),31);
-	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_HORIZ|board<sz>::ST_VERT),33);
+	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_ROT),30);
+	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_HORIZ|board<sz>::ST_VERT),29);
 	//b.dig_puzzle(board<sz>::symtype(board<sz>::ST_HORIZ|board<sz>::ST_VERT|board<sz>::ST_ROT),33);
-	size_t num_clues=b.count();
-	std::cerr << "dug\n";
-	std::cerr << static_cast<std::string>(b) << '\n';;
-	b.print_large();
 	b.print();
+	size_t num_clues=b.count();
 	c=b;
 	b.heuristic_solution();
 	//std::cerr << static_cast<std::string>(b) << '\n';;
 	if(!b.is_solved()){
-	    print_counts(b);
-	    std::cerr << "had to use brute force to solve it\n";
-	    c.brute_force_solution();
-	    c.print();
-	    std::cerr << "trying again\n";
-	}else{
-	    b.print();
 	    std::cout << num_clues << " clues, ";
-	    print_counts(b);
-	    break;
+	    std::cerr << "had to use brute force to solve it\n";
+	    b.brute_force_solution(1);
+	    std::cerr << static_cast<std::string>(c) << '\n';
+	}else{
+	    std::cout << num_clues << " clues, ";
+	    b.print_counts();
+	    std::cerr << static_cast<std::string>(c) << '\n';
 	}
+	b.print();
     }
-    exit(0);
+    return 0;
 }

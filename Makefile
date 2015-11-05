@@ -1,7 +1,7 @@
 CXX=g++
 CFLAGS=-ggdb -Wall -Wextra -pedantic -Wconversion -Wfloat-equal -Wshadow -Wmissing-declarations
 #CPPFLAGS=
-CPPFLAGS=-ggdb -pedantic -Wextra -Wwrite-strings -Wformat=2 -Wall -fstrict-aliasing -O3 -Wstrict-aliasing=3 -std=c++0x
+CPPFLAGS=-ggdb -pedantic -Wextra -Wwrite-strings -Wformat=2 -Wall -fstrict-aliasing -O3 -Wstrict-aliasing=3 -std=c++11
 allbins= guitarscale testit strict-aliasing traitexample bind elfer xkeys xkeynames scales float client stat f2s1 f2s2 f2s3 f2s4
 all: $(allbins)
 

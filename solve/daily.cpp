@@ -51,8 +51,8 @@ main()
 	{ "..318.947......5.8...5...62...3....923..7..158....4...96...1...3.2......158.396..", "6 star", "", "Knight Features" }
 
     };
-    for(size_t ctr=0;ctr<vtests.size();ctr++){
-	board<sz> *b=new board<sz>(vtests[ctr].tst);
+    for(auto test : vtests){
+	board<sz> *b=new board<sz>(test.tst);
 	b->print();
 	b->heuristic_solution();
 	b->print();
@@ -64,11 +64,10 @@ main()
 	    std::cout << "Valid but not solved puzzle\n";
 	}
 	b->print_large();
-	std::cout << "Copyright: '" << vtests[ctr].copyright << "', Difficulty " << vtests[ctr].diff << '\n';
+	std::cout << "Copyright: '" << test.copyright << "', Difficulty " << test.diff << '\n';
 	b->print_counts();
 	std::cout << "count: " << b->count() << '\n';
-	std::cout << "get_count: " << b->get_count() << '\n';
 	std::cout << std::endl;
     }
-    exit(0);
+    return 0;
 }

@@ -28,12 +28,56 @@ main()
     //board<9> b("1..4....339.1.674.7.43.569.5..712..4.7.5.....4..86...79436.18.22679.8.3.8512.....");
     //board<9> b("1.8..2...4.58.9....32.7.9..52.73.................25.67..3.8.69....6.78.....9..4..");
       //board<9> b("71..235......47...6.4..5.2926.......4.......1.......4654.1..8.2...59......847..15");
-      board<9> b("7.9..23.....1..8..1.5..94..9.3....1....6.5....7....2.3..64..1.8..7..1.....15..9.7");
+      //board<9> b("7.9..23.....1..8..1.5..94..9.3....1....6.5....7....2.3..64..1.8..7..1.....15..9.7");
+	board<9> b{ "...63...5"
+	            "5.4...9.."
+		    "8..4....."
 
-    b.print_large();
+		    "12..5.3.."
+		    "3.8.6.7.1"
+		    "..6.1..29"
+
+		    ".....9..4"
+		    "..3...2.7"
+		    "2...71..."
+	};
+	board<16> b16={"................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"
+	               "................"};
+
+    b.set_strategy_sort_level("hidden single",2);
+    b.set_strategy_sort_level("naked single",4);
+    b.set_strategy_sort_level("intersection",6);
+    b.set_strategy_sort_level("naked double",8);
+    b.set_strategy_sort_level("hidden double",10);
+    b.set_strategy_sort_level("naked triple",12);
+    b.set_strategy_sort_level("hidden triple",14);
+    b.set_strategy_sort_level("naked quad",16);
+    b.set_strategy_sort_level("hidden quad",18);
+    b.set_strategy_sort_level("x-wing",20);
+    b.set_strategy_sort_level("y-wing",22);
+    b.set_strategy_sort_level("swordfish",23);
+    b.set_strategy_sort_level("jellyfish",24);
+    b.set_strategy_sort_level("xy-chain",26);
+
+    //b.print_large();
+    //b.dump_all_possibilities();
     b.heuristic_solution();
     //b.brute_force_solution();
-    b.print_large();
+    //b.print_large();
     b.print();
     b.print_counts();
 }

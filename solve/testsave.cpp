@@ -1,5 +1,4 @@
 #include <iostream>
-#define SUDOKU_TESTING
 #include <sudoku.h>
 
 const size_t sz=9;
@@ -7,9 +6,8 @@ const size_t sz=9;
 int
 main()
 {
-    //size_t passcount=0,failcount=0;
     std::cout << "running tests: \n";
-    std::cout << std::setw(47) << "naked single (1 in row 0, col 0)....";
+    std::cout << std::setw(44) << " naked single (1 in row 0, col 0)....";
     std::vector<square> sqs1={
 	square(0,0,std::vector<unsigned int>({1})),
     };
@@ -64,8 +62,8 @@ main()
     }
 
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "row hidden single (3 in row 0 column 8)....";
-    board<9> b2 {
+    std::cout << std::setw(44) << " row hidden single (3 in row 0 column 8)...";
+    std::vector<square> sqs2={
 	square(0,0,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(0,1,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(0,2,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
@@ -76,6 +74,7 @@ main()
 	square(0,7,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(0,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
     };
+    board<9> b2(sqs2);
     b2.heuristic_solution(true);
     if(b2.get_strategy_count("hidden single")!=1){
 	std::cerr << "failed: expected hidden single count of 1\n";
@@ -90,8 +89,8 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "column hidden single....";
-    board<9> b3 {
+    std::cout << std::setw(44) << " column hidden single...";
+    std::vector<square> sqs3={
 	square(0,4,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(1,4,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(2,4,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
@@ -102,6 +101,7 @@ main()
 	square(7,4,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(8,4,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
     };
+    board<9> b3(sqs3);
     b3.heuristic_solution(true);
     if(b3.get_strategy_count("hidden single")!=1){
 	std::cerr << "failed: expected hidden single count of 1\n";
@@ -110,8 +110,8 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "block hidden single....";
-    board<9> b4 {
+    std::cout << std::setw(44) << " block hidden single...";
+    std::vector<square> sqs4={
 	square(0,0,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(0,1,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(0,2,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
@@ -122,6 +122,7 @@ main()
 	square(2,1,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
 	square(2,2,std::vector<unsigned int>({1,2,4,5,6,7,8,9})),
     };
+    board<9> b4(sqs4);
     b4.heuristic_solution(true);
     if(b4.get_strategy_count("hidden single")!=1){
 	std::cerr << "failed: expected hidden single count of 1\n";
@@ -131,11 +132,12 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row naked double....";
-    board<9> b5 {
+    std::cout << std::setw(44) << " row naked double....";
+    std::vector<square> sqs5={
 	square(0,0,std::vector<unsigned int>({1,2})),
 	square(0,2,std::vector<unsigned int>({1,2})),
     };
+    board<9> b5(sqs5);
     b5.heuristic_solution(true);
     if(b5.get_strategy_count("naked double")!=1){
 	std::cout << "failed: expected naked double count of 1\n";
@@ -145,11 +147,12 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "column naked double....";
-    board<9> b6 {
+    std::cout << std::setw(44) << " column naked double....";
+    std::vector<square> sqs6={
 	square(4,2,std::vector<unsigned int>({1,2})),
 	square(8,2,std::vector<unsigned int>({1,2})),
     };
+    board<9> b6(sqs6);
     b6.heuristic_solution(true);
     if(b6.get_strategy_count("naked double")!=1){
 	std::cout << "failed: expected naked double count of 1\n";
@@ -159,11 +162,12 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block naked double....";
-    board<9> b7 {
+    std::cout << std::setw(44) << " block naked double....";
+    std::vector<square> sqs7={
 	square(4,2,std::vector<unsigned int>({1,2})),
 	square(5,1,std::vector<unsigned int>({1,2})),
     };
+    board<9> b7(sqs7);
     b7.heuristic_solution(true);
     if(b7.get_strategy_count("naked double")!=1){
 	std::cout << "failed: expected naked double count of 1\n";
@@ -173,8 +177,8 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row hidden double....";
-    board<9> b8 {
+    std::cout << std::setw(44) << " row hidden double....";
+    std::vector<square> sqs8={
 	square(3,0,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(3,1,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
 	square(3,2,std::vector<unsigned int>({1,2,5,6,7,8,9})),
@@ -185,6 +189,7 @@ main()
 	square(3,7,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(3,8,std::vector<unsigned int>({1,2,5,6,7,8,9}))
     };
+    board<9> b8(sqs8);
     b8.heuristic_solution(true);
     if(b8.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
@@ -194,8 +199,8 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "column hidden double....";
-    board<9> b9 {
+    std::cout << std::setw(44) << " column hidden double....";
+    std::vector<square> sqs9={
 	square(0,8,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(1,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
 	square(2,8,std::vector<unsigned int>({1,2,5,6,7,8,9})),
@@ -206,6 +211,7 @@ main()
 	square(7,8,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(8,8,std::vector<unsigned int>({1,2,5,6,7,8,9}))
     };
+    board<9> b9(sqs9);
     b9.heuristic_solution(true);
     if(b9.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
@@ -215,8 +221,8 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block hidden double....";
-    board<9> b10 {
+    std::cout << std::setw(44) << " block hidden double....";
+    std::vector<square> sqs10={
 	square(6,6,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(6,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
 	square(6,8,std::vector<unsigned int>({1,2,5,6,7,8,9})),
@@ -227,6 +233,7 @@ main()
 	square(8,7,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(8,8,std::vector<unsigned int>({1,2,5,6,7,8,9}))
     };
+    board<9> b10(sqs10);
     b10.heuristic_solution(true);
     if(b10.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
@@ -236,8 +243,8 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block/column hidden double....";
-    board<9> b11 {
+    std::cout << std::setw(44) << " block/column hidden double....";
+    std::vector<square> sqs11={
 	square(6,6,std::vector<unsigned int>({1,2,5,6,7,8,9})),
 	square(6,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
 	square(6,8,std::vector<unsigned int>({1,2,5,6,7,8,9})),
@@ -248,6 +255,7 @@ main()
 	square(8,7,std::vector<unsigned int>({1,2,3,4,5,9})),
 	square(8,8,std::vector<unsigned int>({1,2,5,6,7,8,9}))
     };
+    board<9> b11(sqs11);
     b11.heuristic_solution(true);
     if(b11.get_strategy_count("hidden double")!=1){
 	std::cout << "failed: expected hidden double count of 1\n";
@@ -256,12 +264,13 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "row naked triple....";
-    board<9> b12 {
+    std::cout << std::setw(44) << " row naked triple....";
+    std::vector<square> sqs12={
 	square(0,0,std::vector<unsigned int>({3,4})),
 	square(0,1,std::vector<unsigned int>({4,9})),
 	square(0,7,std::vector<unsigned int>({3,9})),
     };
+    board<9> b12(sqs12);
     b12.heuristic_solution(true);
     if(b12.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
@@ -270,12 +279,13 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "column naked triple....";
-    board<9> b13 {
+    std::cout << std::setw(44) << " column naked triple....";
+    std::vector<square> sqs13={
 	square(1,8,std::vector<unsigned int>({3,4})),
 	square(4,8,std::vector<unsigned int>({4,9})),
 	square(7,8,std::vector<unsigned int>({3,9})),
     };
+    board<9> b13(sqs13);
     b13.heuristic_solution(true);
     if(b13.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
@@ -285,12 +295,13 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block naked triple....";
-    board<9> b14 {
+    std::cout << std::setw(44) << " block naked triple....";
+    std::vector<square> sqs14={
 	square(0,6,std::vector<unsigned int>({3,4})),
 	square(1,7,std::vector<unsigned int>({4,9})),
 	square(2,8,std::vector<unsigned int>({3,9})),
     };
+    board<9> b14(sqs14);
     b14.heuristic_solution(true);
     if(b14.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
@@ -300,12 +311,13 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block/row naked triple....";
-    board<9> b15 {
+    std::cout << std::setw(44) << " block/row naked triple....";
+    std::vector<square> sqs15={
 	square(0,6,std::vector<unsigned int>({3,4})),
 	square(0,7,std::vector<unsigned int>({4,9})),
 	square(0,8,std::vector<unsigned int>({3,9})),
     };
+    board<9> b15(sqs15);
     b15.heuristic_solution(true);
     if(b15.get_strategy_count("naked triple")!=1){
 	std::cout << "failed: expected naked triple count of 1\n";
@@ -315,18 +327,19 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row hidden triple....";
-    board<9> b16 {
-	square(0,0,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,1,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,2,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,3,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,4,std::vector<unsigned int>({1,2,5,6,7,8})),
+    std::cout << std::setw(44) << " row hidden triple....";
+    std::vector<square> sqs16={
+	square(0,0,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,1,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,2,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,3,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,4,std::vector<unsigned int>({0,1,2,5,6,7,8})),
 	square(0,5,std::vector<unsigned int>({3,4,8,9})),
-	square(0,6,std::vector<unsigned int>({1,2,5,6,7,8})),
+	square(0,6,std::vector<unsigned int>({0,1,2,5,6,7,8})),
 	square(0,7,std::vector<unsigned int>({4,9})),
 	square(0,8,std::vector<unsigned int>({3,9})),
     };
+    board<9> b16(sqs16);
     b16.heuristic_solution(true);
     if(b16.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
@@ -336,15 +349,16 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "column hidden triple....";
-    board<9> b17 {
-	square(0,8,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(1,8,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(2,8,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(3,8,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(4,8,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(6,8,std::vector<unsigned int>({1,2,5,6,7,8})),
+    std::cout << std::setw(44) << " column hidden triple....";
+    std::vector<square> sqs17={
+	square(0,8,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(1,8,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(2,8,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(3,8,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(4,8,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(6,8,std::vector<unsigned int>({0,1,2,5,6,7,8})),
     };
+    board<9> b17(sqs17);
     b17.heuristic_solution(true);
     if(b17.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
@@ -354,15 +368,16 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block hidden triple....";
-    board<9> b18 {
-	square(1,0,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(1,1,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(2,2,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,0,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,1,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,2,std::vector<unsigned int>({1,2,5,6,7,8})),
+    std::cout << std::setw(44) << " block hidden triple....";
+    std::vector<square> sqs18={
+	square(1,0,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(1,1,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(2,2,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,0,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,1,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,2,std::vector<unsigned int>({0,1,2,5,6,7,8})),
     };
+    board<9> b18(sqs18);
     b18.heuristic_solution(true);
     if(b18.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
@@ -372,15 +387,16 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block/row hidden triple....";
-    board<9> b19 {
-	square(1,0,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(1,1,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(1,2,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,0,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,1,std::vector<unsigned int>({1,2,5,6,7,8})),
-	square(0,2,std::vector<unsigned int>({1,2,5,6,7,8})),
+    std::cout << std::setw(44) << " block/row hidden triple....";
+    std::vector<square> sqs19={
+	square(1,0,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(1,1,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(1,2,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,0,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,1,std::vector<unsigned int>({0,1,2,5,6,7,8})),
+	square(0,2,std::vector<unsigned int>({0,1,2,5,6,7,8})),
     };
+    board<9> b19(sqs19);
     b19.heuristic_solution(true);
     if(b19.get_strategy_count("hidden triple")!=1){
 	std::cout << "failed: expected hidden triple count of 1\n";
@@ -390,13 +406,14 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row naked quad....";
-    board<9> b20 {
+    std::cout << std::setw(44) << " row naked quad....";
+    std::vector<square> sqs20={
 	square(0,0,std::vector<unsigned int>({3,4,7})),
 	square(0,6,std::vector<unsigned int>({3,4})),
 	square(0,7,std::vector<unsigned int>({4,7,9})),
 	square(0,8,std::vector<unsigned int>({3,9})),
     };
+    board<9> b20(sqs20);
     b20.heuristic_solution(true);
     if(b20.get_strategy_count("naked quad")!=1){
 	std::cout << "failed: expected naked quad count of 1\n";
@@ -406,13 +423,14 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "column naked quad....";
-    board<9> b21 {
+    std::cout << std::setw(44) << " column naked quad....";
+    std::vector<square> sqs21={
 	square(0,0,std::vector<unsigned int>({3,4,7})),
 	square(3,0,std::vector<unsigned int>({3,4})),
 	square(5,0,std::vector<unsigned int>({4,7,9})),
 	square(7,0,std::vector<unsigned int>({3,9})),
     };
+    board<9> b21(sqs21);
     b21.heuristic_solution(true);
     if(b21.get_strategy_count("naked quad")!=1){
 	std::cout << "failed: expected naked quad count of 1\n";
@@ -422,13 +440,14 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block naked quad....";
-    board<9> b22 {
+    std::cout << std::setw(44) << " block naked quad....";
+    std::vector<square> sqs22={
 	square(3,3,std::vector<unsigned int>({3,4,7})),
 	square(3,4,std::vector<unsigned int>({3,4})),
 	square(4,3,std::vector<unsigned int>({4,7,9})),
 	square(5,5,std::vector<unsigned int>({3,9})),
     };
+    board<9> b22(sqs22);
     b22.heuristic_solution(true);
     if(b22.get_strategy_count("naked quad")!=1){
 	std::cout << "failed: expected naked quad count of 1\n";
@@ -438,14 +457,15 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row hidden quad....";
-    board<9> b23 {
-	square(0,3,std::vector<unsigned int>({2,3,5,6})),
-	square(0,4,std::vector<unsigned int>({2,3,5,6})),
-	square(0,5,std::vector<unsigned int>({2,3,5,6})),
-	square(0,6,std::vector<unsigned int>({2,3,5,6})),
-	square(0,8,std::vector<unsigned int>({2,3,5,6})),
+    std::cout << std::setw(44) << " row hidden quad....";
+    std::vector<square> sqs23={
+	square(0,3,std::vector<unsigned int>({0,2,3,5,6})),
+	square(0,4,std::vector<unsigned int>({0,2,3,5,6})),
+	square(0,5,std::vector<unsigned int>({0,2,3,5,6})),
+	square(0,6,std::vector<unsigned int>({0,2,3,5,6})),
+	square(0,8,std::vector<unsigned int>({0,2,3,5,6})),
     };
+    board<9> b23(sqs23);
     b23.heuristic_solution(true);
     if(b23.get_strategy_count("hidden quad")!=1){
 	std::cout << "failed: expected hidden quad count of 1\n";
@@ -455,27 +475,28 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row x-wing....";
-    board<9> b24 {
-	square(0,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(0,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,5,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,6,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(0,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,8,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,5,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,6,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,8,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
+    std::cout << std::setw(44) << " row x-wing....";
+    std::vector<square> sqs24={
+	square(0,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(0,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,5,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,6,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(0,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,8,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,5,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,6,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,8,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
     };
+    board<9> b24(sqs24);
     b24.heuristic_solution(true);
     if(b24.get_strategy_count("x-wing")!=1){
 	std::cout << "failed: expected x-wing count of 1\n";
@@ -485,27 +506,28 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "column x-wing....";
-    board<9> b25 {
-	square(0,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(1,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(2,4,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(4,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(5,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,4,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(7,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(1,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(2,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(4,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(5,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(7,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
+    std::cout << std::setw(44) << " column x-wing....";
+    std::vector<square> sqs25={
+	square(0,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(1,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(2,4,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(4,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(5,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,4,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(7,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(1,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(2,7,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(4,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(5,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,7,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(7,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
     };
+    board<9> b25(sqs25);
     b25.heuristic_solution(true);
     if(b25.get_strategy_count("x-wing")!=1){
 	std::cout << "failed: expected x-wing count of 1\n";
@@ -514,12 +536,13 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "y-wing....";
-    board<9> b35 {
+    std::cout << std::setw(44) << " y-wing....";
+    std::vector<square> sqs35={
 	square(0,4,std::vector<unsigned int>({1,5})),
 	square(1,3,std::vector<unsigned int>({3,5})),
 	square(1,0,std::vector<unsigned int>({1,3})),
     };
+    board<9> b35(sqs35);
     b35.heuristic_solution(true);
     if(b35.get_strategy_count("y-wing")!=1){
 	std::cout << "failed: expected y-wing count of 1\n";
@@ -529,38 +552,39 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row swordfish....";
-    board<9> b36 {
-	square(0,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(0,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,5,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(0,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+    std::cout << std::setw(44) << " row swordfish....";
+    std::vector<square> sqs36={
+	square(0,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(0,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,5,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(0,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(3,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,5,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(3,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,5,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(6,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,5,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(6,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,5,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
     };
+    board<9> b36(sqs36);
     b36.heuristic_solution(true);
     if(b36.get_strategy_count("swordfish")!=1){
 	std::cout << "failed: expected swordfish count of 1\n";
@@ -571,38 +595,39 @@ main()
     std::cout << "passed\n";
 
 
-    std::cout << std::setw(47) << "column swordfish....";
-    board<9> b37 {
-	square(0,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(1,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(2,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(4,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(5,0,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(7,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,0,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+    std::cout << std::setw(44) << " column swordfish....";
+    std::vector<square> sqs37={
+	square(0,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(1,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(2,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(4,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(5,0,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(7,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,0,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(0,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(1,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(2,3,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(4,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(5,3,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(7,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,3,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(0,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(1,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(2,3,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(4,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(5,3,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(7,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,3,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(0,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(1,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(2,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(4,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(5,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(7,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(0,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(1,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(2,7,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(4,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(5,7,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(7,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,7,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
     };
+    board<9> b37(sqs37);
     b37.heuristic_solution(true);
     if(b37.get_strategy_count("swordfish")!=1){
 	std::cout << "failed: expected swordfish count of 1\n";
@@ -670,48 +695,49 @@ main()
 
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "row jellyfish....";
-    board<9> b38 {
-	square(0,0,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(0,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,2,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,5,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(0,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(0,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+    std::cout << std::setw(44) << " row jellyfish....";
+    std::vector<square> sqs38={
+	square(0,0,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(0,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,2,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,5,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(0,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(0,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(3,0,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,5,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(3,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(3,0,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,5,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(3,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(6,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(6,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,5,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(6,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(6,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,5,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
 
-	square(8,0,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(8,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(8,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,5,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(8,6,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,7,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,8,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
+	square(8,0,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(8,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,2,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(8,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,5,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(8,6,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,7,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,8,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
     };
+    board<9> b38(sqs38);
     b38.heuristic_solution(true);
     if(b38.get_strategy_count("jellyfish")!=1){
 	std::cout << "failed: expected jellyfish count of 1\n";
@@ -720,18 +746,19 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "row block intersection....";
-    board<9> b26 {
-	square(8,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,2,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,3,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,5,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(8,6,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(8,7,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(8,8,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
+    std::cout << std::setw(44) << " row block intersection....";
+    std::vector<square> sqs26={
+	square(8,0,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,1,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,2,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,3,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,5,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(8,6,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(8,7,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(8,8,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
     };
+    board<9> b26(sqs26);
     b26.heuristic_solution(true);
     if(b26.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
@@ -741,18 +768,19 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "column block intersection....";
-    board<9> b27 {
-	square(0,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(1,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(2,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(3,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(4,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(5,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
-	square(6,4,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(7,4,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
-	square(8,4,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
+    std::cout << std::setw(44) << " column block intersection....";
+    std::vector<square> sqs27={
+	square(0,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(1,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(2,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(3,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(4,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(5,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
+	square(6,4,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(7,4,std::vector<unsigned int>({0,1,2,3,4,5,6,7,8,9})),
+	square(8,4,std::vector<unsigned int>({0,1,2,3,5,6,7,8,9})),
     };
+    board<9> b27(sqs27);
     b27.heuristic_solution(true);
     if(b27.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
@@ -762,8 +790,8 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block row intersection....";
-    board<9> b28 {
+    std::cout << std::setw(44) << " block row intersection....";
+    std::vector<square> sqs28={
 	square(0,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
 	square(0,1,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
 	square(0,2,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
@@ -774,6 +802,7 @@ main()
 	square(2,1,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
 	square(2,2,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
     };
+    board<9> b28(sqs28);
     b28.heuristic_solution(true);
     if(b28.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
@@ -783,8 +812,8 @@ main()
     }
     std::cout << "passed\n";
 
-    std::cout << std::setw(47) << "block column intersection....";
-    board<9> b29 {
+    std::cout << std::setw(44) << " block column intersection....";
+    std::vector<square> sqs29={
 	square(0,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
 	square(1,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
 	square(2,0,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
@@ -795,6 +824,7 @@ main()
 	square(1,2,std::vector<unsigned int>({1,2,3,4,5,6,7,8,9})),
 	square(2,2,std::vector<unsigned int>({1,2,3,5,6,7,8,9})),
     };
+    board<9> b29(sqs29);
     b29.heuristic_solution(true);
     if(b29.get_strategy_count("intersection")!=1){
 	std::cout << "failed: expected intersection count of 1\n";
@@ -803,8 +833,8 @@ main()
 	return 1;
     }
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "xy-chain....";
-    board<9> b30 {
+    std::cout << std::setw(44) << " xy-chain....";
+    std::vector<square> sqs30={
 	// expect chain:
 	// r7r0{|1|,5} -> r0c0{1,|7|} -> r2c2{|3|,7|| -> r2c7{3,|4|}
 	//             -> r0c8{|2|,4} -> r7c8{|1|,2}
@@ -819,6 +849,7 @@ main()
 	square(7,0,std::vector<unsigned int>({1,5})),
 	square(7,8,std::vector<unsigned int>({2,1}))
     };
+    board<9> b30(sqs30);
     b30.heuristic_solution(true);
     if(b30.get_strategy_count("xy-chain")!=1){
 	std::cout << "failed: expected xy-chain count of 1\n";
@@ -838,7 +869,7 @@ main()
     }
 
     std::cout << "passed\n";
-    std::cout << std::setw(47) << "brute_force_check....";
+    std::cout << std::setw(44) << " brute_force_check....";
 /*
         +---+---+---+---+---+---+---+---+---+
 	|***|***|***|***|***|***|***|***|***|
@@ -891,7 +922,7 @@ main()
 	"798" "526" "143"
 	"561" "483" "927"
     );
-    size_t numsols=b40.brute_force_solution(2);
+    size_t numsols=b40.brute_force_check(true);
     if(numsols!=2){
 	b40.print_large();
 	std::cerr << "failed, expected 2 solutions, found: " << numsols << '\n';

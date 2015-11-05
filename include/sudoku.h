@@ -2,18 +2,23 @@
 #define SUDOKU_H
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <vector>
 #include <map>
 #include <set>
+#include <stack>
+#include <initializer_list>
+#include <algorithm>
+#include <exception>
+#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <cmath>
-#include <sys/time.h>
+//#include <sys/time.h>
 #include <assert.h>
-#include <algorithm>
 #include <ncurses.h>
-#include <exception>
+
 
 // the escape sequences seen below are recognized by most terminals in linux to
 // make text bold and to stop bolding text.  This allows us to give more 
@@ -21,24 +26,106 @@
 // numbers given in the puzzle and not numbers found during solution.  If you
 // want to capture output in a text file, however, it might look like a bunch
 // of gobbledegook in your editor.  At that point you might want to comment
-// out the next line.
-#define USE_TTY_BOLD
-#ifdef USE_TTY_BOLD
-    const char bold[]={ 27,'[','1','m',0 };
-    const char unbold[]={ 27,'[','0','m',0 };
+// out the next line.  Alternatively, on linux you can look at it with escape
+// escape codes intact with less -R
+
+#define USE_ANSI_ESCAPES
+#ifdef USE_ANSI_ESCAPES
+    std::string bold		{ "\x1b[1m" };
+    std::string unbold		{ "\x1b[22m" };
+    std::string toblack		{ "\x1b[0;30m" };
+    std::string toyellow	{ "\x1b[1;33m" };
+    std::string topurple	{ "\x1b[1;35m" };
+    std::string toorange	{ "\x1b[0;33m" };
+    std::string toblue		{ "\x1b[0;34m" };
+    std::string tored		{ "\x1b[0;31m" };
+    std::string togreen		{ "\x1b[0;32m" };
+    void
+    cursor2(std::ostream& os, size_t row,size_t col)
+    {
+	os << "\x1b[" << row << ';' << col << 'H';
+    }
+
 #else 
     const char *bold="";
     const char *unbold="";
+    const char *toyellow="";
+    const char *topurple="";
+    const char *toorange="";
+    const char *toblue="";
+    const char *tored="";
+    const char *toblack="";
+    const char *togreen="";
+    void
+    cursor2(std::ostream& os, size_t row,size_t col) { }
 #endif
+
+//! This enum holds colors for coloring algorithms.
+enum color {
+    none,
+    yellow,
+    purple,
+    orange,
+    blue,
+    green,
+    red
+};
+//! holds color names corresponding to the color enum
+std::vector<std::string> color_names {
+	"none",
+	"yellow",
+	"purple",
+	"orange",
+	"blue",
+	"green",
+	"red"
+};
+
+//! convert enum into escape string
+/*! given a color enum, returns the ansi escape string that will make
+ * that color appear when sent to a terminal
+ * \param c the color as an enum
+ * \return std::string the escape string to ask the terminal to dislay color
+ */
+std::string
+color2string(color c)
+{
+    switch(c){
+	case color::yellow:
+	    return toyellow;
+	    break;
+	case color::purple:
+	    return topurple;
+	    break;
+	case color::orange:
+	    return toorange;
+	    break;
+	case color::blue:
+	    return toblue;
+	    break;
+	case color::red:
+	    return tored;
+	    break;
+	case color::green:
+	    return togreen;
+	    break;
+	default:
+	    return toblack;
+	    break;
+    }
+}
 
 // RESPATH shows all the solution steps if defined
 //#define SHOW_RESPATH // N.B. all RESPATH print 1 based, not 0 based
+//#define SHOW_RESPATH_PRINT_PUZZLE
 
 // uncomment appropriate SHOW_XXX lines below to see debugging information about
 // the corresponding section
 
 //#define SHOW_BRUTE_DEBUG
+//#define SHOW_RUNNING_BRUTE_DEBUG
 //#define SHOW_BRUTE_CHECK_DEBUG
+//#define SHOW_CHECK_PVAL_SET_DEBUG
 //#define SHOW_CHOOSE_VAL_DEBUG
 //#define SHOW_GENERATE_DEBUG
 //#define SHOW_DIG_DEBUG
@@ -47,6 +134,7 @@
 //#define SHOW_HEURISTIC_DEBUG
 //#define SHOW_SUDOKU_METHOD_DEBUG
 //#define SHOW_REGISTER_STRATEGY_DEBUG
+//#define SHOW_STRATEGY_SORT_LEVEL_DEBUG 
 //#define SHOW_VALIDATE_DEBUG
 
 //#define SHOW_NAKED_SINGLE_DEBUG
@@ -58,6 +146,7 @@
 //#define SHOW_NAKED_QUAD_DEBUG
 //#define SHOW_HIDDEN_QUAD_DEBUG
 //#define SHOW_INTERSECTION_DEBUG
+//#define SHOW_DISCERN_INTERSECTION_DEBUG
 //#define SHOW_X_WING_DEBUG
 //#define SHOW_Y_WING_DEBUG
 //#define SHOW_Y_WING_APPLY_DEBUG
@@ -65,6 +154,8 @@
 //#define SHOW_JELLYFISH_DEBUG
 //#define SHOW_XY_CHAIN_DEBUG
 //#define SHOW_XY_CHAIN_FILT_DEBUG
+//#define SHOW_SIMPLE_COLOR_DEBUG
+//#define SHOW_SIMPLE_COLOR_LARGE_PRINT_DEBUG
 
 //#define SHOW_HIDDEN_APPLY_DEBUG
 //#define SHOW_NAKED_APPLY_DEBUG
@@ -80,11 +171,19 @@
 //#define SHOW_REDUCE_TO_SET_DEBUG
 //#define SHOW_GENPVALS_DEBUG
 //#define SHOW_CLEAR_PVAL_VAL_DEBUG
+//#define SHOW_APPLIED_DEBUG
 
 #if defined(SHOW_RESPATH)
 #define RESPATH
 #else
 #define RESPATH if(0)
+#endif
+#if defined(SHOW_RESPATH_PRINT_PUZZLE)
+#if defined(SHOW_RESPATH)
+#define RESPATH_PRINT_PUZZLE
+#else
+#define RESPATH_PRINT_PUZZLE if(0)
+#endif
 #endif
 #if defined(SHOW_VALIDATE_DEBUG)
 #define VALIDATE_DEBUG
@@ -121,6 +220,11 @@
 #else
 #define REGISTER_STRATEGY_DEBUG if(0)
 #endif
+#if defined(SHOW_STRATEGY_SORT_LEVEL_DEBUG)
+#define STRATEGY_SORT_LEVEL_DEBUG
+#else
+#define STRATEGY_SORT_LEVEL_DEBUG if(0)
+#endif
 #if defined(SHOW_CLEAR_PVAL_VAL_DEBUG)
 #define CLEAR_PVAL_VAL_DEBUG
 #else
@@ -150,6 +254,16 @@
 #define BRUTE_CHECK_DEBUG
 #else
 #define BRUTE_CHECK_DEBUG if(0)
+#endif
+#if defined(SHOW_RUNNING_BRUTE_DEBUG)
+#define RUNNING_BRUTE_DEBUG
+#else
+#define RUNNING_BRUTE_DEBUG if(0)
+#endif
+#if defined(SHOW_CHECK_PVAL_SET_DEBUG)
+#define CHECK_PVAL_SET_DEBUG
+#else
+#define CHECK_PVAL_SET_DEBUG if(0)
 #endif
 #if defined(SHOW_PRUNING_DEBUG)
 #define PRUNING_DEBUG
@@ -236,6 +350,11 @@
 #else
 #define INTERSECTION_DEBUG if(0)
 #endif
+#if defined(SHOW_DISCERN_INTERSECTION_DEBUG)
+#define DISCERN_INTERSECTION_DEBUG
+#else
+#define DISCERN_INTERSECTION_DEBUG if(0)
+#endif
 #if defined(SHOW_X_WING_DEBUG)
 #define X_WING_DEBUG
 #else
@@ -271,6 +390,16 @@
 #else
 #define XY_CHAIN_FILT_DEBUG if(0)
 #endif
+#if defined(SHOW_SIMPLE_COLOR_DEBUG)
+#define SIMPLE_COLOR_DEBUG
+#else
+#define SIMPLE_COLOR_DEBUG if(0)
+#endif
+#if defined(SHOW_SIMPLE_COLOR_LARGE_PRINT_DEBUG)
+#define SIMPLE_COLOR_LARGE_PRINT_DEBUG
+#else
+#define SIMPLE_COLOR_LARGE_PRINT_DEBUG if(0)
+#endif
 #if defined(SHOW_BOARD_CONSTRUCT_DEBUG)
 #define BOARD_CONSTRUCT_DEBUG
 #else
@@ -281,6 +410,28 @@
 #else
 #define HEURISTIC_DEBUG if(0)
 #endif
+#if defined(SHOW_APPLIED_DEBUG)
+#define APPLIED_DEBUG
+#else
+#define APPLIED_DEBUG if(0)
+#endif
+
+#include <random>
+
+//! singleton reference to std::default_random_engine
+/*! Singleton source for a std::default_random_engine, so we get a procession
+ * of values instead of starting over again and again and again.
+ * \return a reference to our static std::default_random_engine
+ */
+//
+std::default_random_engine&
+get_engine()
+{
+    // if we start using threads we will have to control access to this
+    // std::default_random_engine is c++11
+    static std::default_random_engine e;
+    return e;
+}
 
 void
 inline
@@ -292,13 +443,14 @@ seed(unsigned int aseed=0)
      * seed in order to replace randomness with repeatability for debugging.
      * \param aseed 0 means use current time to seed, else use aseed
      */
-    struct timeval tv;
     if(aseed != 0){
 	// if we get passed a seed, then use it
-	srandom(aseed);
+	get_engine().seed(aseed);
     }else{
-	gettimeofday(&tv,NULL);
-	srandom(tv.tv_sec*tv.tv_usec);
+	// chrono is c++11
+	unsigned seed=
+	    std::chrono::steady_clock::now().time_since_epoch().count();
+	get_engine().seed(seed);
     }
 }
 
@@ -306,30 +458,47 @@ int
 inline
 rand_n(size_t n)
 {
+    //! return a random number [0,n)
     /*!
-     * generate a number between [0 - n) as in integer.
+     * generate a number between [0,n) as in integer.
      * i.e. if n==7, there's an equal change of returning {0,1,2,3,4,5,6} 
      * \param n the non-inclusive upper bound
-     * \return an integer [0 - n)
+     * \return an integer [0,n)
      */
-    return int((double(random()) / double(RAND_MAX)) * n);
+    // uniform_int_distribution is c++11
+    std::uniform_int_distribution<int> d(0,n-1);
+    return d(get_engine());
 }
 
 //! keeps information about each square of the sudoku board
-/*!
- * This class is used by class board to keep track of set values, and of possible
- * values based on other square's values.
+/*! This class is used by class board to keep track of set values,
+ * and of possible values based on other square's values.
  */
+
 class square
 {
-    friend std::ostream& operator<<(std::ostream& os, square&sq);
+    friend std::ostream& operator<<(std::ostream& os,square&sq);
 public:
     square();
     square(const square&);
+    ~square()
+    {
+	for(auto a : applied_stuff){
+	    delete a;
+	}
+    }
+
+    std::ostream&
+    print_color(std::ostream& os, color c)
+    {
+	os << color_names[c];
+	return os;
+    }
+
     //! This enum holds the types of algorithms that may touch a square.
     //! The purpose is to avoid time waste or loops, from finding the same
     //! thing more than once.
-    enum matched_type{
+    enum class matched_type : std::uint8_t {
 	// square's mt field get marked with these as the corresponding
 	// algorithms are successfully applied.  So we don't try to apply
 	// the same algorithm to the same squares over and over wasting time, or
@@ -338,32 +507,33 @@ public:
 	// n.b. we do not note hidden or naked singles because this result in
 	// values being set immediately and make the squares no longer of 
 	// interest to other heuristics.
-	AM_NONE=0,
-	AM_NAKED_DOUBLE=1,
-	AM_HIDDEN_DOUBLE=2,
-	AM_NAKED_TRIPLE=4,
-	AM_HIDDEN_TRIPLE=8,
-	AM_NAKED_QUAD=16,
-	AM_HIDDEN_QUAD=32,
-	AM_ROW_BLOCK_INTERSECTION=64,
-	AM_COLUMN_BLOCK_INTERSECTION=128,
-	AM_BLOCK_ROW_INTERSECTION=256,
-	AM_BLOCK_COLUMN_INTERSECTION=512,
-	AM_X_WING=1024,
-	AM_SWORDFISH=2048,
-	AM_JELLYFISH=4096,
-	AM_Y_WING=8192,
-	AM_XY_CHAIN=16384
-
+	AM_NONE,
+	AM_NAKED_DOUBLE,
+	AM_HIDDEN_DOUBLE,
+	AM_NAKED_TRIPLE,
+	AM_HIDDEN_TRIPLE,
+	AM_NAKED_QUAD,
+	AM_HIDDEN_QUAD,
+	AM_ROW_BLOCK_INTERSECTION,
+	AM_COLUMN_BLOCK_INTERSECTION,
+	AM_BLOCK_ROW_INTERSECTION,
+	AM_BLOCK_COLUMN_INTERSECTION,
+	AM_X_WING,
+	AM_SWORDFISH,
+	AM_JELLYFISH,
+	AM_Y_WING,
+	AM_XY_CHAIN,
+	AM_SIMPLE_COLOR
     };
-
     /*!
       make a string representation of a matched type
       \param mt The type to represent
       \return the representation as a std::string
       */
-    std::string mt2string(matched_type mt){
+    static std::string mt2string(matched_type mt)
+    {
 	std::vector<std::string> AM_NAMES={
+	    "AM_NONE",
 	    "AM_NAKED_DOUBLE",
 	    "AM_HIDDEN_DOUBLE",
 	    "AM_NAKED_TRIPLE",
@@ -378,40 +548,239 @@ public:
 	    "AM_SWORDFISH",
 	    "AM_JELLYFISH",
 	    "AM_Y_WING",
-	    "AM_XY_CHAIN"
+	    "AM_XY_CHAIN",
+	    "AM_SIMPLE_COLOR"
 	};
-	size_t tmpmt=mt;
-	if(!tmpmt){
-	    return "AM_NONE";
-	}else{
-	    for(size_t ctr=0;tmpmt;ctr++){
-		if(tmpmt&1){
-		    return AM_NAMES[ctr];
-		}
-		tmpmt>>=1;
-	    }
-	}	
-	return "AM_NOT_FOUND!!!";
+	return AM_NAMES[static_cast<size_t>(mt)];
     }
+    //! The parent class for classes that remember methods applied to squares
+    class applied
+    {
+    public:
+	//! The main constructor for applied
+	applied(matched_type t):type(t){}
+	applied()=delete;
+	virtual ~applied(){}
+	matched_type type; //!< the method applied to the square
+        virtual std::ostream& print(std::ostream& os)
+	{
+	    os << "applied(" << square::mt2string(type) << ")";
+	    return os;
+	}
+    };
+
+    //! a class to keep information about an applied heuristic
+    /*! In the square, there's a vector of things derived from applied
+     * that keep track of what heuristics have been applied to the square.
+     * this one keeps track of the matched type, and a set of squares
+     * involved in the heuristic, for example for a hidden double the
+     * set of squares would hold the two squares.
+     */
+    class applied_y_wing: public applied
+    {
+    public:
+	applied_y_wing()=delete;
+	//! our main constructor
+	/*! This constructor is called to initialize our applied_y_wing class
+	 * initiallizes our base class passing param t, the pivot and the
+	 * two wings
+	 * \param t the method applied
+	 * \param wing1 reference to the first wing
+	 * \param pivot reference to the pivot
+	 * \param wing2 reference to the second wing
+	 */
+	applied_y_wing(matched_type t,square& w1,square& p, square& w2):applied(t),wing1(w1),pivot(p),wing2(w2){};
+	virtual std::ostream&
+	print(std::ostream& os)
+	{
+	    os << "applied_y_wing(";
+	    applied::print(os);
+	    return os;
+	}
+	//! equality operator for applied_y_wing
+	bool
+	operator==(applied_y_wing& other)
+	{
+	    if(type==other.type && wing1==other.wing1 &&
+		    pivot==other.pivot && wing2==other.wing2){
+		return true;
+	    }
+	    return false;
+	}
+	//! our copy of the set of pointers to applied squares
+	square &wing1, &pivot, &wing2;
+    };
+
+    //! a class to keep information about an applied heuristic
+    /*! In the square, there's a vector of things derived from applied
+     * that keep track of what heuristics have been applied to the square.
+     * this one keeps track of the matched type, and a set of squares
+     * involved in the heuristic, for example for a hidden double the
+     * set of squares would hold the two squares.
+     */
+    class applied_set: public applied
+    {
+    public:
+	applied_set()=delete;
+	//! our main constructor
+	/*! This constructor is called to initialize our applied_set class
+	 * initiallizes our base class passing param t and our sqs member
+	 * \param t the method applied
+	 * \param sqs a set of pointers to squares in our dance party
+	 */
+	applied_set(matched_type t,std::set<square*>sqs):applied(t),sqs(sqs){};
+	//! equality operator for applied_set
+	bool
+	operator==(applied_set& other)
+	{
+	    if(type==other.type &&
+		    sqs==other.sqs){
+		return true;
+	    }
+	    return false;
+	}
+	//! our copy of the set of pointers to applied squares
+	std::set<square*> sqs;
+    };
+
+    //! a class to keep information about an applied heuristic
+    /*! In the square, there's a vector of things derived from applied
+     * that keep track of what heuristics have been applied to the square.
+     * this one keeps track of the matched type, a pval, and a vector of squares
+     * involved in the heuristic, for an intersection, the
+     * vector of squares would hold the two or three squares.
+     */
+    class applied_intersection: public applied
+    {
+    public:
+	applied_intersection()=delete;
+	//! our main constructor
+	/*! This constructor is called to initialize our applied_intersection
+	 * class
+	 * initiallizes our base class passing param t and our sqs member
+	 * \param t the method applied
+	 * \param sqs a intersection of pointers to squares in our dance party
+	 */
+	applied_intersection(matched_type t,size_t pval, std::vector<square*>sqs):applied(t),pval(pval),sqs(sqs){};
+	//! equality operator for applied_intersection
+	bool
+	operator==(applied_intersection& other)
+	{
+	    if(type==other.type
+		    && sqs==other.sqs
+		    && pval==other.pval){
+		return true;
+	    }
+	    return false;
+	}
+	//! the pval the intersection happened on
+	size_t pval;
+	//! our copy of the vector of pointers to applied squares
+	std::vector<square*> sqs;
+    };
+
+    //! a class to keep information about an applied interlock heuristic
+    /*! In the square, there's a vector of things derived from applied
+     * that keep track of what heuristics have been applied to the square.
+     * This particular one keeps track of applied x-wings, swordfish,
+     * and jellyfish. They just need to remember the type, (one of
+     * AM_X_WING, AM_SWORDFISH, or AM_JELLYFISH, the value, the selt
+     * of rows and the set of columns involved.
+     */
+    class applied_interlock: public applied
+    {
+    public:
+	//! our main constructor for applied_interlock
+	/*! constructor for applied interlock. Initializes our parent
+	 * applied class with t and sets our rows and cols to r and c
+	 * \param t a matched type for heuristic applied to a square
+	 * \param v the value on which we interlocked
+	 * \param r the set of rows involved in the interlock
+	 * \param c the set of columns involved in the interlock
+	 */
+	applied_interlock(matched_type t, size_t v, const std::set<size_t>& r, const std::set<size_t>& c): applied(t), val(v), rows(r), cols(c){ APPLIED_DEBUG std::cerr << "applied_interlock constructor\n"; }
+	applied_interlock()=delete;
+	//! our equality operator, used to check to see if this already applied to square
+	bool
+	operator==(applied_interlock& other)
+	{
+	    if( type==other.type &&
+		val==other.val &&
+		rows==other.rows &&
+		cols==other.cols){
+		return true;
+	    }
+	    return false;
+	}
+	//! the value the interlock locked on
+	size_t val;
+	//! the rows involved in the interlock
+	std::set<size_t> rows;
+	//! the columns involved in the interlock
+	std::set<size_t> cols;
+    };
+ 
+    //! a class to keep information about an applied simple_color heuristic
+    /*! In the square, there's a vector of things derived from applied
+     * that keep track of what heuristics have been applied to the square.
+     * This particular one keeps track of applied x-wings, swordfish,
+     * and jellyfish. They just need to remember the type, (one of
+     * AM_X_WING, AM_SWORDFISH, or AM_JELLYFISH, the value, the selt
+     * of rows and the set of columns involved.
+     */
+    class applied_simple_color: public applied
+    {
+    public:
+	//! our main constructor for applied_simple_color
+	/*! constructor for applied simple_color. Initializes our parent
+	 * applied class with t and sets our rows and cols to r and c
+	 * \param t a matched type for heuristic applied to a square
+	 * \param v the value on which we simple_colored
+	 * \param r the set of rows involved in the simple_color
+	 * \param c the set of columns involved in the simple_color
+	 */
+	applied_simple_color(size_t pv): applied(matched_type::AM_SIMPLE_COLOR), pval(pv)
+	{
+	    APPLIED_DEBUG std::cerr << "applied_simple_color constructor\n";
+	}
+	applied_simple_color()=delete;
+	//! our equality operator, used to check to see if this already applied to square
+	bool
+	operator==(applied_simple_color& other)
+	{
+	    if( type==other.type && pval==other.pval){
+		return true;
+	    }
+	    return false;
+	}
+	//! the candidate value the simple_color marked on
+	size_t pval;
+    };
     square&
     operator=(const square&);
     square(size_t rw, size_t cl, std::vector<unsigned int> pv);
     square(size_t rw, size_t cl, size_t vl, std::vector<unsigned int> pv);
     //! default filter used by get_neighbors() always returns true
     bool
-    true_filt(square*){return true;};
+    true_filt(square*){return true;}
     //! filter for get_neighbors returns true for squares with 2 members of pvals
     bool
-    two_filt(square*sq){if(sq->size()==2) return true;return false;};
+    two_filt(square*sq){if(sq->size()==2) return true;return false;}
     //! filter for get_neighbors returns true for squares with 8 members of pvals
     bool
-    eight_filt(square*sq){if(sq->size()==8) return true;return false;};
+    eight_filt(square*sq){if(sq->size()==8) return true;return false;}
     //! filter for get_neighbors returns true for squares with 9 members of pvals
     bool
-    nine_filt(square*sq){if(sq->size()==9) return true;return false;};
+    nine_filt(square*sq){if(sq->size()==9) return true;return false;}
+    //! filter for get_neighbors returns true for squares with no color
+    bool
+    no_color_filt(square*sq)
+    {
+	return sq->get_color()==color::none?true:false;
+    }
 
     /*! filter for get_neighbors.  Called when we have two pvals and have
-     *  claimed one of them for ourselfs.  We're looking for squares that
+     *  claimed one of them for ourselves.  We're looking for squares that
      *  also have two pvals, and that matches the pval we claim.
      *  \param sq a pointer to the square to be checked to see if it has
      *         two pvals and one of them matches the one we own
@@ -419,7 +788,8 @@ public:
      *         we own.
      */
     bool
-    xy_chain_filt(square*sq){
+    xy_chain_filt(square*sq)
+    {
 	XY_CHAIN_FILT_DEBUG std::cout << "xy_chain_filt passed in square: " << *sq;
 	XY_CHAIN_FILT_DEBUG std::cout << "  our square: " << *this;
 	if(pvals.size()!=2){
@@ -452,34 +822,67 @@ public:
 	return false;
     }
     //! expect to set owned to either 0 or 1 since this is used by xy_chain
+    /*! set_owned is used for chains of squares with two pvals. This sets
+     * whether the square "owns" the first (value 0) or the second (value 1).
+     * \param o either 0 or 1
+     * \return none
+     */
     void
     set_owned(size_t o){ owned=o; };
+    //! get a color and set it in square
+    /*! We use this in coloring algorithms to tell the squares what they are
+     */
+    void
+    set_color(color in_color){ c=in_color;};
+    //! get a color and set it in square
+    /*! We use this in coloring algorithms to find out color of square
+     */
+    color get_color(){ return c;};
+
+
     //!get pvals[owned]
+    /*! expecting that the square has two pvals, and that owned has been
+     * previously set, returns pvals[0] or pvals[1] depending on the
+     * setting of owned
+     */
     size_t
     get_xy_owned(){ return pvals[owned]; };
     //!get pval[1-matched], i.e. the other of the pair that is not owned
     size_t
     get_xy_next(){ return pvals[1-owned]; };
-    //! assigns the passed in vector to our pvals and clears mt
+    //! assigns the passed in vector to our pvals and clears applied methods
     void
     assign_pvals(std::vector<unsigned int>& vals);
-    //! removes everything from our pvals and clears mt
+    //! removes everything from our pvals and clears applied methods
     void
     clear_pvals();
-    //! returns whatever is in our val, 0 for unset, else 1-N
+    //! returns whatever is in our val, 0 for unset, else one of [1,N)
     unsigned int get_val() const { return val; }
     //! sets our value if not already locked
+    /*! sets our value to the passed in value and if set_pval is true
+     * (the default), additionally clears pvals and pushed our new val
+     * onto pvals
+     * \param v the value to be set
+     * \param set_pval a boolean, if true sets pvals, if false no
+     */
     void set_val(unsigned int v,bool set_pval=true){
 	if(!locked){
 	    val=v;
 	    // did have code to clear pvals and set it to just the set value, 
 	    // but that broke brute force which relies on being able to use 
-	    // pvals to try one value after another.  So I added another argument,
-	    // set_pval defaulted to true, so heuristic methods can set a val
-	    // and also set pvals to the same thing, but brute force can use 
-	    // another argument set to false to avoid setting pvals.
+	    // pvals to try one value after another.  So I added another
+	    // argument, set_pval, defaulted to true, so heuristic methods
+	    // can set a val and also set pvals to the same thing, but brute
+	    // force can use another argument set to false to avoid setting
+	    // pvals so they can use it to keep track of untried values.
+	    // TODO: board's set_val clears these additional pvals one by
+	    // one before calling us, as they keep the possibility vectors
+	    // for row column and block in sync, so that this is superfluous
+	    // in that case. Wasted effort?
 	    if(set_pval){
-		mt=AM_NONE;
+		if(applied_stuff.size()){
+		    clear_applied_stuff();
+		}
 		pvals.clear();
 		pvals.push_back(val);
 	    }
@@ -488,10 +891,15 @@ public:
     size_t get_row() const { return row; }//!< accessor for row of the square
     size_t get_column() const { return col; }//!< accessor for column of the square
     bool is_locked()const { return locked;}//!<locked means val set can't change
-    void set_locked(bool d){ locked=d;mt=AM_NONE; }//!<make square locked
+    void set_locked(bool d)
+    {
+	locked=d;
+	if(applied_stuff.size()){
+	    clear_applied_stuff();
+	}
+    }//!<make square locked
     bool choose_val(bool rand=true);//!<chooses from pvals
     bool in_vals(size_t) const;//!<return true of input is in pvals
-    bool check_pval_set(std::set<size_t>);//!<return true iff pvals is identical to input
     void
     reset();//!<put a square into a known but empty state
     //! mark a square as holding invalid state
@@ -510,23 +918,32 @@ public:
     void
     unlock(){locked=false;};
     /*! try to find the val in our pvals and if found use the iterator
-	 returned by std::find to erase that value.  If we DO find it,
-	 \param in_val the value to be removed
-	 \return true if in_val was in our pvals, and we had to clear it. else if we did nothing, return false.
+	returned by std::find to erase that value.  If we find it, as
+	a side effect we clear information about applied heuristics.
+	\param in_val the value to be removed
+	\return true if in_val was in our pvals, and we had to clear it. else if we did nothing, return false.
      */
     bool
     clear_pval_val(size_t in_val){
 	std::vector<unsigned int>::iterator it;
 	it=std::find(pvals.begin(),pvals.end(),in_val);
-	CLEAR_PVAL_VAL_DEBUG std::cerr << "square::clear_pval_val(" << in_val << "): " << *this << '\n';
+	CLEAR_PVAL_VAL_DEBUG{
+	    std::cerr << "square::clear_pval_val("
+		<< in_val << "): " << *this;
+	}
 	if(it!=pvals.end()){
-	    mt=AM_NONE;
+	    if(applied_stuff.size()){
+		clear_applied_stuff();
+	    }
 	    pvals.erase(it);
-	    CLEAR_PVAL_VAL_DEBUG std::cerr << "square::clear_pval_val(" << in_val << "): true " << *this << '\n';
-	    CLEAR_PVAL_VAL_DEBUG std::cerr <<"square::clear_pval_val(" << in_val << "): exiting true\n";
+	    CLEAR_PVAL_VAL_DEBUG{
+		std::cerr << "  exiting true\n";
+	    }
 	    return true;
 	}
-	CLEAR_PVAL_VAL_DEBUG std::cerr << "square::clear_pval_val(" << in_val << "): exiting false\n";
+	CLEAR_PVAL_VAL_DEBUG{
+	    std::cerr << "  exiting false\n";
+	}
 	return false;
 
     };
@@ -550,15 +967,170 @@ public:
     //! sets the row and column
     void
     set_rowcol(size_t therow, size_t thecol){ row=therow; col=thecol; }
-    //! sets the matched type used to tell what algorithm has been applied
-    void
-    set_matched_type(const matched_type in_mt){if(in_mt==AM_NONE) mt=AM_NONE; else mt=matched_type(mt|in_mt);}
-    //! pull a matched type bit out of the mt bitset
-    void
-    clear_matched_type(const matched_type in_mt){if(mt&in_mt) mt=matched_type(mt-in_mt);}
-    //! check to see if a particular bit is set in our matched type bitset
+
     bool
-    check_matched_type(const matched_type in_mt) const {return mt&in_mt;}
+    check_applied_y_wing(square& wing1, square& pivot, square& wing2)
+    {
+	APPLIED_DEBUG{
+	    std::cerr << "check_applied_y_wing:\n"
+		<< "  walking through list of applied stuff\n";
+	}
+	for(applied* a : applied_stuff){
+	    if(a->type==matched_type::AM_Y_WING){
+		applied_y_wing* as=dynamic_cast<applied_y_wing*>(a);
+		if(pivot==as->pivot &&
+		    ((wing1==as->wing1 && wing2==as->wing2)
+		  || (wing1==as->wing2 && wing2==as->wing1))){
+		    APPLIED_DEBUG{
+			std::cerr << "found y-wing already in applied list\n";
+		    }
+		    return true;
+		}
+	    }
+	}
+	APPLIED_DEBUG std::cerr << "didn't find the y-wing in applied list\n";
+	return false;
+    }
+
+    bool
+    set_applied_y_wing(square& wing1, square& pivot, square& wing2)
+    {
+	if(!pivot.check_applied_y_wing(wing1,pivot,wing2)){
+	    applied_stuff.push_back(new applied_y_wing(matched_type::AM_Y_WING,wing1,pivot,wing2));
+	    return true;
+	}else{
+	    APPLIED_DEBUG std::cerr << "tried to apply set_applied_y_wing but already set\n";
+	}
+	return false;
+    }
+ 
+    //! remembers that the heuristic mt has been applied with set sqs
+    /*! this is called to remember that the heuristic mt has been applied
+     * with the set of squares sqs. It doubles as a check to see if this
+     * exact request has been already made, returning false if it finds 
+     * an applied_set on our applied_stuff vector already with exactly
+     * mt and sqs in it.
+     * \param mt type of heuristic applied
+     * \param sqs set of pointers to squares for all the squares that participated in the heuristic
+     * \return bool false for already applied true for successfully applied
+     */
+    bool
+    set_applied_set(const matched_type mt, std::set<square *>sqs)
+    {
+	APPLIED_DEBUG {
+	    std::cerr << "set_applied_set(" << mt2string(mt) << "): returning ";
+	}
+	// first look through this square's list of applied heuristics and
+	// if we find one with the same matched_type and same set members
+	// return  false.
+	// If not we push a new applied_set with mt and sqs in it on to
+	// our list of aplied heuristics
+	for(applied* a : applied_stuff){
+	    if(a->type==mt){
+		applied_set* as=dynamic_cast<applied_set*>(a);
+		if(as->sqs==sqs){
+		    APPLIED_DEBUG std::cerr << "false\n";
+		    return false;
+		}
+	    }
+	}
+	applied_stuff.push_back(new applied_set(mt,sqs));
+	APPLIED_DEBUG std::cerr << "true\n";
+	return true;
+    }
+
+    //! remembers that the heuristic mt has been applied with intersection of sqs for a pval
+    /*! this is called to remember that the heuristic mt has been applied
+     * with the intersection of squares sqs for a particular pval. It doubles
+     * as a check to see if this exact request has been already made,
+     * returning false if it finds an applied_intersection on our
+     * applied_stuff intersection already with exactly mt and sqs and pval.
+     * \param mt type of heuristic applied
+     * \param pval the candidate the intersection occured on
+     * \param sqs pointers to squares for all squares that participated in the intersection
+     * \return bool false for already applied true for successfully applied
+     */
+    bool
+    set_applied_intersection(const matched_type mt, size_t pval, std::vector<square *>sqs)
+    {
+	APPLIED_DEBUG {
+	    std::cerr << "set_applied_intersection(" << mt2string(mt) << "): returning ";
+	}
+	// first look through this square's list of applied heuristics and
+	// if we find one with the same matched_type and same intersection members
+	// return  false.
+	// If not we push a new applied_intersection with mt and sqs in it on to
+	// our list of aplied heuristics
+	for(applied* a : applied_stuff){
+	    if(a->type==mt){
+		applied_intersection* as=dynamic_cast<applied_intersection*>(a);
+		if(as->pval==pval && as->sqs==sqs){
+		    APPLIED_DEBUG std::cerr << "false\n";
+		    return false;
+		}
+	    }
+	}
+	applied_stuff.push_back(new applied_intersection(mt,pval,sqs));
+	APPLIED_DEBUG std::cerr << "true\n";
+	return true;
+    }
+
+    //! sets the combo of applied type and vector of squares applied
+    bool
+    set_applied_interlock(const matched_type mt, size_t val, std::set<size_t>rows, std::set<size_t>cols)
+    {
+	for(applied* a : applied_stuff){
+	    if(a->type==mt){
+		applied_interlock* ai=dynamic_cast<applied_interlock*>(a);
+		if(ai->val == val && ai->rows==rows && ai->cols==cols){
+		    return false;
+		}
+	    }
+	}
+	applied_stuff.push_back(new applied_interlock(mt,val,rows,cols));
+	return true;
+    }
+    //! checks to see if simple color was found on this pval
+    bool
+    check_applied_simple_color(size_t pval)
+    {
+	for(applied* a : applied_stuff){
+	    if(a->type==matched_type::AM_SIMPLE_COLOR){
+		applied_simple_color* ai=dynamic_cast<applied_simple_color*>(a);
+		if(ai->pval == pval){
+		    return true;
+		}
+	    }
+	}
+	return false;
+    }
+    //! sets color found on this square on this pval
+    bool
+    set_applied_simple_color(size_t pval)
+    {
+	if(check_applied_simple_color(pval)){
+	    // not setting because already set
+	    return false;
+	}
+	applied_stuff.push_back(new applied_simple_color(pval));
+	return true;
+    }
+    //! clears information about applied heuristics
+    /*! walks through the square's applied_stuff vector and deletes all of
+     * the various applied_interlock or applied_squares or whatever
+     */
+    void clear_applied_stuff()
+    { 
+	APPLIED_DEBUG std::cerr << "CLEARING APPLIED STUFF, there are " << applied_stuff.size() << " entries\n";
+	for(auto a : applied_stuff){
+	    APPLIED_DEBUG{
+		std::cerr << "  clearing: ";
+		a->print(std::cerr) << '\n';
+	    }
+	    delete a;
+	}
+	applied_stuff.clear();
+    }
     /*!
      * allow access to the pvals by index
      * \param which 0 based index into pvals
@@ -569,14 +1141,38 @@ public:
 	if(which>=pvals.size()) std::cout << "Found -1\n";
 	return which<pvals.size()?pvals[which]:-1;
     }
-    //size_t
-    //operator[](size_t which){
-	//return which<pvals.size();
-    //}
+    std::vector<unsigned int>::iterator begin(){ return pvals.begin(); }
+    std::vector<unsigned int>::iterator end(){ return pvals.end(); }
     //! returns size of pvals
     size_t
     size(){return pvals.size();};
+
+    std::ostream&
+    print_pvals(std::ostream& os)
+    {
+	bool first=true;
+	os << '{';
+	for(auto pval : pvals){
+	    if(!first) os << ", ";
+	    first=false;
+	    os << pval;
+	}
+	os << "}";
+	return os;
+    }
+
+    bool
+    operator==(square& other)
+    {
+	if(row==other.row && col==other.col){
+	    return true;
+	}
+	return false;
+    }
+
 private:
+    // private data
+    std::vector<applied*> applied_stuff;
     bool locked; //!< if true, square is immutable, for example given clue
     unsigned int val;	//!< The value of the square in the board
     size_t row;//!< row in board.  Really board's info but convenient here
@@ -584,10 +1180,73 @@ private:
     std::vector<unsigned int> pvals;//!<possible values for an unset square
     std::vector<unsigned int> saved_vals;//!<unused
     bool valid;//!<false when two squares that can see each other have same value
-    matched_type mt;//!<bitset of algorithms that used this square
     size_t owned; // which of 2 pvals we own for xy-chain.
+    color c;
+    // private methods
 };
 
+class p_square_helper
+{
+public:
+    p_square_helper(square* sq,bool prc=true,bool ppv=false,
+	    bool pc=false,bool add_one=false):
+		 sq(sq),prc(prc),ppv(ppv),pc(pc),add_one(add_one){}
+    square* sq;	// the square whose info will be printed
+    bool prc;	// print row column?
+    bool ppv;	// print pvals?
+    bool pc;	// print color?
+    bool add_one;	// add one to row and columne?
+};
+
+inline
+class p_square_helper
+print_sq_rc(square *sq)
+{
+    return p_square_helper(sq,true,false,false,false);
+}
+
+inline
+class p_square_helper
+print_sq_rc_plus(square *sq)
+{
+    return p_square_helper(sq,true,false,false,true);
+}
+
+inline
+class p_square_helper
+print_sq_rcp(square *sq)
+{
+    return p_square_helper(sq,true,true,false,false);
+}
+
+inline
+class p_square_helper
+print_sq_rcp_color(square *sq)
+{
+    return p_square_helper(sq,true,true,true,false);
+}
+
+std::ostream&
+operator<<(std::ostream& os, p_square_helper h)
+{
+    std::string retval;
+    std::ostringstream ss(retval);
+    size_t addit=h.add_one?1:0;
+    
+    ss << color2string(h.sq->get_color());
+    ss << "r" << h.sq->get_row()+addit << 'c' << h.sq->get_column()+addit;
+    ss << toblack;
+    if(h.ppv){
+	ss << " pvals:";
+	h.sq->print_pvals(ss);
+    }
+    if(h.pc){
+	ss << " color: ";
+	h.sq->print_color(ss,h.sq->get_color());
+    }
+    os << ss.str();
+    return os;
+}
 /*!
  * constructor just calls the reset() method
  */
@@ -603,12 +1262,19 @@ square::square()
 void
 square::reset()
 {
+    //std::cerr << "square::reset()\n" << *this;
     val=0;
     pvals.clear();
-    pvals={ 1,2,3,4,5,6,7,8,9 };
+    for(size_t ctr=1;ctr<10;ctr++){
+	pvals.push_back(ctr);
+    }
+    //pvals={ 1,2,3,4,5,6,7,8,9 };
     locked=false;
     valid=true;
-    mt=AM_NONE;
+    if(applied_stuff.size()){
+	clear_applied_stuff();
+    }
+    c=color::none;
 }
 
 /*!
@@ -621,12 +1287,13 @@ square::reset()
  */
 square::square(size_t rw, size_t cl, std::vector<unsigned int> pv)
 {
-    pvals=pv;
-    val=0;
+    reset();
     row=rw;
     col=cl;
-    mt=AM_NONE;
-    locked=false;
+    pvals.clear();
+    for(auto val : pv){
+	pvals.push_back(val);
+    }
 }
 
 /*!
@@ -640,12 +1307,14 @@ square::square(size_t rw, size_t cl, std::vector<unsigned int> pv)
  */
 square::square(size_t rw, size_t cl, size_t vl, std::vector<unsigned int> pv)
 {
-    pvals=pv;
-    val=vl;
+    reset();
     row=rw;
     col=cl;
-    mt=AM_NONE;
-    locked=false;
+    val=vl;
+    pvals.clear();
+    for(auto val : pv){
+	pvals.push_back(val);
+    }
 }
 
 /*!
@@ -657,11 +1326,30 @@ square::square(const square& other)
     val=other.val;
     row=other.row;
     col=other.col;
-    pvals=other.pvals;
+    pvals.clear();
+    for(auto val : other.pvals){
+	pvals.push_back(val);
+    }
+    //pvals=other.pvals; // hasn't segfaulted but looks same as where it does
     locked=other.locked;
-    mt=other.mt;
+    valid=other.valid;
+    /* // probably don't have to do anything with this
+    if(other.applied_stuff.size()){
+    }
+    */
+    c=other.c;
 }
 
+//! A generic print of vectors that prints every element of the vector
+template<typename T>
+std::ostream&
+operator<<(std::ostream& os, std::vector<T> v)
+{
+    for(auto i : v){
+	os << i << ',';
+    }
+    return os;
+}
 /*!
  * assignment operator for a square
  * \param other the square to be assigned to us
@@ -673,61 +1361,45 @@ square::operator=(const square& other)
     val=other.val;
     row=other.row;
     col=other.col;
-    pvals=other.pvals;
+    pvals.clear();
+    //std::cerr << "pvals.capacity: " << pvals.capacity() << '\n';
+    for(auto val : other.pvals){
+	pvals.push_back(val);
+    }
+    //pvals=other.pvals;   // segfault here problem is with my pvals
+    			 // maybe better to do push_back? Maybe resize to
+			 // 9 at construction? Nope neither helped
     locked=other.locked;
-    mt=other.mt;
     return *this;
 }
+
 /*!
- * copies vals to our pvals and as a side-effect, clears mt
+ * copies vals to our pvals and as a side-effect, clears applied stuff
  * \param vals the values to copy to our pvals
  */
 void
 square::assign_pvals(std::vector<unsigned int>& vals)
 {
-    pvals=vals;
-    mt=AM_NONE;
+    pvals.clear();
+    for(auto val : vals){
+	pvals.push_back(val);
+    }
+    //pvals=vals;
+    if(applied_stuff.size()){
+	clear_applied_stuff();
+    }
 }
 
 /*!
- * clears our pvals and as a side effect sets mt to AM_NONE
+ * clears our pvals and as a side effect and clears applied stuff
  */
 void
 square::clear_pvals()
 {
     pvals.clear();
-    mt=AM_NONE;
-}
-
-/*!
- * when passed a set of numbers, checks to make sure pvals contains
- * all of the numbers and no others.
- * \param pvs a set of size_t to be compared to our pvals
- * \return true if there is an exact match, i.e. sets are identical
- */
-bool
-inline
-square::check_pval_set(std::set<size_t>pvs)
-{
-
-    std::set<size_t> excludes={1,2,3,4,5,6,7,8,9};
-    std::set<size_t>::iterator eit;
-    std::set<size_t>::iterator pit;
-    for(pit=pvs.begin();pit!=pvs.end();pit++){
-	if((eit=std::find(excludes.begin(),excludes.end(),*pit))!=excludes.end()){
-	    excludes.erase(eit);
-	}
-	if(std::find(pvals.begin(),pvals.end(),*pit)==pvals.end()){
-	    return false;
-	}
+    if(applied_stuff.size()){
+	clear_applied_stuff();
     }
-    for(eit=excludes.begin();eit!=excludes.end();eit++){
-	if(std::find(pvals.begin(),pvals.end(),*eit)!=pvals.end()){
-	    return false;
-	}
-    }
-    return true;
-
 }
 
 bool
@@ -772,7 +1444,8 @@ square::choose_val(bool rand)
 }
 
 std::ostream&
-operator<<(std::ostream& os, square&sq){
+operator<<(std::ostream& os, square&sq)
+{
     /*!
      * dump a square to the passed in stream
      * \param os the stream to dump to
@@ -782,58 +1455,28 @@ operator<<(std::ostream& os, square&sq){
     os << "square[" << sq.row << "][" << sq.col << "]"
        << ", val: " << sq.val
        << ", locked: " << std::boolalpha << sq.is_locked()
-       << ", pvals: {";
-    std::vector<unsigned int>::iterator it;
-    bool first=true;
-    for(it=sq.pvals.begin();it!=sq.pvals.end();it++){
-	if(!first) os << ", ";
-	first=false;
-	os << *it;
-    }
-    os << "}";
-    HEURISTIC_DEBUG{
-	std::vector<std::string> AM_NAMES={
-	    "AM_NAKED_DOUBLE",
-	    "AM_HIDDEN_DOUBLE",
-	    "AM_NAKED_TRIPLE",
-	    "AM_HIDDEN_TRIPLE",
-	    "AM_NAKED_QUAD",
-	    "AM_HIDDEN_QUAD",
-	    "AM_ROW_BLOCK_INTERSECTION",
-	    "AM_COLUMN_BLOCK_INTERSECTION",
-	    "AM_BLOCK_ROW_INTERSECTION",
-	    "AM_BLOCK_COLUMN_INTERSECTION",
-	    "AM_X_WING",
-	    "AM_SWORDFISH",
-	    "AM_JELLYFISH",
-	    "AM_Y_WING",
-	    "AM_XY_CHAIN"
-
-	};
-	first=true;
-	os << " mt {";
-	if(!sq.mt){
-	    os << "AM_NONE";
-	}else{
-	    size_t tmpmt=sq.mt;
-	    for(size_t ctr=0;tmpmt;ctr++){
-		if(tmpmt&1){
-		    if(!first){
-			os << " | ";
-		    }
-		    os<<AM_NAMES[ctr];
-		    first=false;
-		}
-		tmpmt>>=1;
-	    }
-	}
-	os << "}";
-    }
+       << ", color: " << sq.c
+       << ", pvals: ";
+    sq.print_pvals(os);
     os << '\n';
     return os;
 }
     
+//! enum  for heuristic routines to tell each other what to operate on
 enum grouptype{GT_ROW, GT_COLUMN, GT_BLOCK};
+
+//! for debugging printing of grouptype enums
+std::vector<std::string> grouptype_names { "GT_ROW", "GT_COLUMN", "GT_BLOCK" };
+//! for debugging printing of grouptype enums
+std::vector<std::string> grouptype_2_name { "row", "column", "block" };
+
+std::ostream&
+operator<<(std::ostream&os, grouptype gt)
+{
+    os << grouptype_names[gt];
+    return os;
+}
+
 template<const unsigned int N> class board; //!< forward reference to board
 
 //! parent class of all solving methods
@@ -846,7 +1489,20 @@ template<const unsigned int N>
 class sudoku_method
 {
 public:
-    sudoku_method():count(0){ SUDOKU_METHOD_DEBUG std::cerr << "sudoku_method()\n"; };
+    //! main constructor
+    /*! The only used constructor
+     * \param s name of method
+     * \param l level of method
+     */
+    sudoku_method(std::string s,size_t l):name(s),level(l){};
+    sudoku_method()=delete;
+
+    //! add to our count of times method applied
+    /*! adds s to the count of times the method applied
+     * \param s the number of times to add
+     */
+    void
+    count_add(size_t s){count+=s;};
     //! Called by each of our child classes each time they successfully apply
     void
     incr_count(){count++;};
@@ -856,21 +1512,56 @@ public:
     //! Called to clear the count of times our child successfully applied
     void
     clear_count(){count=0;};
-    //! Our children must implement apply
-    //! Our children must implement apply
+    //!getter for name
+    const std::string& get_name(){return name;}
+    //!getter for sort level
+    size_t get_sort_level(){return sort_level;}
+    //! setter for sort level
+    void set_sort_level(size_t level){
+	sort_level=level; 
+    }
+    //! getter for level
+    size_t get_level(){return level;}
+    /*! for each algorithm, the apply method implements it.
+     * Our children must implement apply
+     */
     virtual
     bool
     apply()=0;
-    //! Our children must each implement their own register_strategy
+    /*!  Our children must each implement their own register_strategy
+     *   to tell the board about themselves. The board calls this for
+     *   each strategy, passing them a pointer to the board (they need
+     *   to call methods of the board and the sort level the board 
+     *   wants them to have (that controls the order in which heuristics
+     *   are called and even IF they are called).
+     *   \param board a pointer to the board
+     */
     virtual
-    void register_strategy(board<N>*)=0;
+    void register_strategy(board<N>*,size_t sort_level)=0;
 protected:
+    // we and our descendents, the individual methods, see this stuff
+    // directly, everyone else has to use the setters and getters
+    //! The name of the method used in setting sort levels
+    std::string name;
     //! Keeps track of times our child successfully applied
     size_t count;
     //! class board calls our register_strategy passing in his address which we save here
     board<N>* b;
-private:
+    //! sort level sets the order of application, with 1 soonest (and 0 means disabled)
+    size_t sort_level;
+    //! felt sense of difficulty
+    size_t level;
 };
+
+std::ostream&
+operator<<(std::ostream& os,sudoku_method<9>* m)
+{
+    std::cout << "sudoku method: "
+	<< std::left << std::setw(14) << m->get_name();
+    std::cout << " sort_level: " << std::right << std::setw(2) <<  m->get_sort_level();
+    std::cout << ", level: " << m->get_level();
+    return os;
+}
 
 /*!
  * This class registers and implements the naked single method
@@ -881,7 +1572,7 @@ template<const unsigned int N>
 class naked_single:public sudoku_method<N>
 {
 public:
-    naked_single(){
+    naked_single():sudoku_method<N>("naked single",1){
 	NAKED_SINGLE_DEBUG std::cerr << "naked_single()\n";
     }
     virtual
@@ -897,19 +1588,22 @@ public:
 	NAKED_SINGLE_DEBUG b->print_large();
 	for(size_t row=0;row<N;row++){
 	    for(size_t col=0;col<N;col++){
-		square& sq=b->b[row][col];
+		//std::vector<square>& therow=b->[row];
+		//square& sq=therow[col];
+		square& sq=(*b)[row][col];
 		NAKED_SINGLE_DEBUG std::cerr << "  naked_single loop--row: " << row << ", col: " << col << ", possibilities: " << sq.size() << ", value: " << sq.get_val() << ", locked: " << sq.is_locked() << "\n";
-		if(!sq.is_locked()
-			&& sq.get_val()==0
-			&& sq.size()==1 ){
+		if(!sq.is_locked() && sq.get_val()==0 && sq.size()==1 ){
 		    RESPATH{
-			std::cerr << "naked-single                    ==> "
+			std::cerr << "naked-single ==> "
 			    << "r" << row+1 << "c" << col+1 << " = "
 			    << sq[0] << ' ';
 		    }
-		    b->set_val(sq.get_row(),sq.get_column(),sq[0]);
-		    NAKED_SINGLE_DEBUG std::cerr << "  [" << row << "][" << col << "] set value to " << sq.get_val() << '\n';
-		    b->update_pvals_for_square(row,col);
+		    // set the square's value to it's only pval
+		    b->set_val(row,col,sq[0]);
+		    NAKED_SINGLE_DEBUG{
+			std::cerr << "  [" << row << "][" << col
+			    << "] set value to " << sq.get_val() << '\n';
+		    }
 		    RESPATH std::cerr << '\n';
 		    sudoku_method<N>::incr_count();
 		    return true;
@@ -920,11 +1614,11 @@ public:
     };
 
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(0,\"naked single\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(0,"naked single", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
@@ -939,7 +1633,7 @@ template<const unsigned int N>
 class hidden_single:public sudoku_method<N>
 {
 public:
-    hidden_single(){
+    hidden_single():sudoku_method<N>("hidden single",1){
 	HIDDEN_SINGLE_DEBUG std::cerr << "hidden_single() constructor\n";
     }
     virtual
@@ -958,9 +1652,12 @@ public:
 		if(mvs[val].size()==1){
 		    square& sq=*mvs[val][0];
 		    if(sq.get_val()==0){
-			RESPATH std::cerr << "hidden-single-in-row r" << row+1 << "         ==> r" << row+1 << "c" << sq.get_column()+1 << " = " << val << ' ';
+			RESPATH{
+			    std::cerr << "hidden-single-in-row r"
+				<< row+1 << " ==> " << print_sq_rc_plus(&sq)
+				<< " = " << val << ' ';
+			}
 			b->set_val(row,sq.get_column(),val);
-			b->update_pvals_for_square(row,sq.get_column());
 			RESPATH std::cerr << "\n";
 			sudoku_method<N>::incr_count();
 			HIDDEN_SINGLE_DEBUG std::cerr << "    [" << row << "][" << sq.get_column() << "] hidden in row, set value to " << val << '\n';
@@ -980,9 +1677,13 @@ public:
 		if(mvs[val].size()==1){
 		    square& sq=*mvs[val][0];
 		    if(sq.get_val()==0){
-			RESPATH std::cerr << "hidden-single-in-column c" << col+1 << "      ==> r" << sq.get_row()+1 << "c" << col+1 << " = " << val << ' ';
+			RESPATH{
+			    std::cerr << "hidden-single-in-column c"
+				<< col+1 << " ==> "
+				<< print_sq_rc_plus(&sq)
+				<< " = " << val << ' ';
+			}
 			b->set_val(sq.get_row(),col,val);
-			b->update_pvals_for_square(sq.get_row(),col);
 			sudoku_method<N>::incr_count();
 			RESPATH std::cerr << "\n";
 			HIDDEN_SINGLE_DEBUG std::cerr << "    [" << sq.get_row() << "][" << col << "] hidden in column, set value to " << val << '\n';
@@ -1002,9 +1703,13 @@ public:
 		if(mvs[val].size()==1){
 		    square& sq=*mvs[val][0];
 		    if(sq.get_val()==0){
-			RESPATH std::cerr << "hidden-single-in-block b" << block_num+1 << "       ==> r" << sq.get_row()+1 << "c" << sq.get_column()+1 << " = " << val << ' ';
+			RESPATH{
+			    std::cerr << "hidden-single-in-block b"
+				<< block_num+1 << " ==> "
+				<< print_sq_rc_plus(&sq)
+				<< " = " << val << ' ';
+			}
 			b->set_val(sq.get_row(),sq.get_column(),val);
-			b->update_pvals_for_square(sq.get_row(),sq.get_column());
 			RESPATH std::cerr << "\n";
 			sudoku_method<N>::incr_count();
 			HIDDEN_SINGLE_DEBUG std::cerr << "    [" << sq.get_row() << "][" << sq.get_column() << "] hidden in column, set value to " << val << '\n';
@@ -1016,15 +1721,32 @@ public:
 	return false;	// didn't find a singleton
     }
 
+    /*! each of the suduko_method<>s has a register_strategy method that
+     * is called from the board at initialization. That lets us find out
+     * the address of the board, and our sort level (affects the order
+     * in which the heuristics are called).
+     * We then in turn close the loop by calling the board's register
+     * strategy method to give them the address of this method. It isn't
+     * required, but it makes it possible to simply and cleanly implement
+     * calling all the heuristics in a loop. All of them live in the board
+     * class anyway so he could just take everyone's address and build
+     * the same data struct, so the call back is technically not neccessary.
+     * It's just elegant. The board pointer is really important, because
+     * the heuristics call methods on the board all of the time. The sort
+     * level is for the convenience of the board, so that he can sort us
+     * (a sort level of 0 though means that we are deactivated, board will
+     * never call us.)
+     */
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(0,\"hidden single\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(0,"hidden single", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
+//! A class to find naked doubles on a board
 /*! Naked Double - Two cells in a group each have only the same two numbers as
  * 	possibilities.  Since each must have one or the other, all other cells
  * 	in the group can have those numbers removed.  This can work for row,
@@ -1036,7 +1758,7 @@ template<const unsigned int N>
 class naked_double:public sudoku_method<N>
 {
 public:
-    naked_double(){
+    naked_double():sudoku_method<N>("naked double",3){
 	NAKED_DOUBLE_DEBUG std::cerr << "naked_double()\n";
     }
     virtual
@@ -1044,8 +1766,9 @@ public:
     apply(){
 	NAKED_DOUBLE_DEBUG std::cerr << "naked_double.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	if(b->naked_apply(2)){
-	    sudoku_method<N>::incr_count();
+	size_t count;
+	if((count=b->naked_apply(2))){
+	    sudoku_method<N>::count_add(count);
 	    NAKED_DOUBLE_DEBUG std::cerr << "success\n";
 	    return true;
 	}
@@ -1053,27 +1776,33 @@ public:
     }
 
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"naked double\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"naked double", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
 
-/*! hidden Double - There are two numbers that only appear in two squares in a
- * 	group, although those squares may have other possibilities.  That means
- * 	that we can not only remove any other possibilities from those two 
- * 	squares, but that we can also remove those two possibilities from any
- * 	other squares in the group.
+//! Find cases of a row/block/column with two numbers in only two squares
+/*! This heuristic looks for cases where there are two numbers that only
+ * appear in two squares in a group, although those squares may have other
+ * possibilities. i.e. in row 7, in columns 2 the square could hold values
+ * 3, 7, 8, and 9, and in column 5, the square could could values 2, 4, 7,
+ * and 8. If these are the only two squares in row 7 that could hold a 7 or
+ * 8, then we have found a hidden double. Since one has to hold 7 and the
+ * other 8, (we don't know which is which yet), we can remove the 3, and the
+ * 9 from the square in column 2 and the 2 and the 4 from the one in column 5.
+ * Since each of them is on the same row now, with only 7 and 8 in their
+ * possible values, we've turned them into a naked double.
  */
 template<const unsigned int N>
 class hidden_double:public sudoku_method<N>
 {
 
 public:
-    hidden_double(){
+    hidden_double():sudoku_method<N>("hidden double",3){
 	HIDDEN_DOUBLE_DEBUG std::cerr << "hidden_double()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1082,8 +1811,9 @@ public:
     apply(){
 	HIDDEN_DOUBLE_DEBUG std::cerr << "hidden_double.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	if(b->hidden_apply(2)){
-	    sudoku_method<N>::incr_count();
+	size_t cnt;
+	if((cnt=b->hidden_apply(2))){
+	    sudoku_method<N>::count_add(cnt);
 	    return true;
 	}
 	return false;
@@ -1091,16 +1821,16 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"hidden double\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"hidden double", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
-/*! Naked triple - Three cells in a group each have only the same three numbers as
- * 	possibilities (although they don't have to each have all three).
+/*! Naked triple - Three cells in a group each have only the same three numbers 
+ * 	as possibilities (although they don't have to each have all three).
  * 	Since each MUST have one of the three, no other cells in the group can
  * 	have any of the three possible values, so those numbers can be removed
  * 	from the other cells in the group.
@@ -1116,7 +1846,7 @@ template<const unsigned int N>
 class naked_triple:public sudoku_method<N>
 {
 public:
-    naked_triple(){
+    naked_triple():sudoku_method<N>("naked triple",3){
 	NAKED_TRIPLE_DEBUG std::cerr << "naked_triple()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1125,8 +1855,9 @@ public:
     apply(){
 	NAKED_TRIPLE_DEBUG std::cerr << "naked_triple.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	if(b->naked_apply(3)){
-	    sudoku_method<N>::incr_count();
+	size_t count=0;
+	if((count=b->naked_apply(3))){
+	    sudoku_method<N>::count_add(count);
 	    NAKED_TRIPLE_DEBUG std::cerr << "naked triple success\n";
 	    return true;
 	}
@@ -1137,25 +1868,25 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"naked triple\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"naked triple", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
-/*! hidden triple - There are two numbers that only appear in two squares in a
+/*! hidden triple - There are two numbers that only appear in three squares in a
  * 	group, although those squares may have other possibilities.  That means
- * 	that we can not only remove any other possibilities from those two 
- * 	squares, but that we can also remove those two possibilities from any
+ * 	that we can not only remove any other possibilities from those three 
+ * 	squares, but that we can also remove those three possibilities from any
  * 	other squares in the group.
  */
 template<const unsigned int N>
 class hidden_triple:public sudoku_method<N>
 {
 public:
-    hidden_triple(){
+    hidden_triple():sudoku_method<N>("hidden triple",3){
 	HIDDEN_TRIPLE_DEBUG std::cerr << "hidden_triple()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1164,8 +1895,9 @@ public:
     apply(){
 	HIDDEN_TRIPLE_DEBUG std::cerr << "hidden_triple.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	if(b->hidden_apply(3)){
-	    sudoku_method<N>::incr_count();
+	size_t cnt;
+	if((cnt=b->hidden_apply(3))){
+	    sudoku_method<N>::count_add(cnt);
 	    HIDDEN_TRIPLE_DEBUG std::cerr << "hidden triple success\n";
 	    return true;
 	}
@@ -1175,33 +1907,30 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"hidden triple\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"hidden triple", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
-/*! Naked quad - Three cells in a group each have only the same three numbers as
- * 	possibilities (although they don't have to each have all three).
- * 	Since each MUST have one of the three, no other cells in the group can
- * 	have any of the three possible values, so those numbers can be removed
+/*! Naked quad - Four cells in a group each have only the same four numbers as
+ * 	possibilities (although they don't have to each have all four).
+ * 	Since each MUST have one of the four, no other cells in the group can
+ * 	have any of the four possible values, so those numbers can be removed
  * 	from the other cells in the group.
- * 	This can work for row, column, or square.  For example if three cells in
- * 	a group had only 1, 2, and 7 in their possibility list, then 1, 2, and 7
- * 	could be removed from the possibility list of every other cell in the
- * 	group.
- * 	N.B. It's possible for the cells to be in-line with each other AND in a
- * 	     block, so we could clear the possibilities from the block and the
- * 	     row or column they are in.
+ * 	This can work for row, column, or square.  For example if four cells in
+ * 	a group had only 1, 2, 5, and 7 in their possibility list, then 1, 2, 5,
+ * 	and 7 could be removed from the possibility list of every other cell in
+ * 	the group.
  */
 template<const unsigned int N>
 class naked_quad:public sudoku_method<N>
 {
 
 public:
-    naked_quad(){
+    naked_quad():sudoku_method<N>("naked quad",3){
 	NAKED_QUAD_DEBUG std::cerr << "naked_quad()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1210,8 +1939,9 @@ public:
     apply(){
 	NAKED_QUAD_DEBUG std::cerr << "naked_quad.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	if(b->naked_apply(4)){
-	    sudoku_method<N>::incr_count();
+	size_t count=0;
+	if((count=b->naked_apply(4))){
+	    sudoku_method<N>::count_add(count);
 	    NAKED_QUAD_DEBUG std::cerr << "naked quad success\n";
 	    return true;
 	}
@@ -1222,25 +1952,24 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"naked quad\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"naked quad", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
-/*! hidden quad - There are two numbers that only appear in two squares in a
+/*! hidden quad - There are four numbers that only appear in four squares in a
  * 	group, although those squares may have other possibilities.  That means
- * 	that we can not only remove any other possibilities from those two 
- * 	squares, but that we can also remove those two possibilities from any
- * 	other squares in the group.
+ * 	that we can not only remove any other possibilities from those four 
+ * 	squares.
  */
 template<const unsigned int N>
 class hidden_quad:public sudoku_method<N>
 {
 public:
-    hidden_quad(){
+    hidden_quad():sudoku_method<N>("hidden quad",3){
 	HIDDEN_QUAD_DEBUG std::cerr << "hidden_quad()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1249,8 +1978,9 @@ public:
     apply(){
 	HIDDEN_QUAD_DEBUG std::cerr << "hidden_quad.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	if(b->hidden_apply(4)){
-	    sudoku_method<N>::incr_count();
+	size_t cnt;
+	if((cnt=b->hidden_apply(4))){
+	    sudoku_method<N>::count_add(cnt);
 	    HIDDEN_QUAD_DEBUG std::cerr << "hidden quad success\n";
 	    return true;
 	}
@@ -1260,59 +1990,56 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"hidden quad\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"hidden quad", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
-/*! intersection - when all of the possibilities for a value in a group (a row,
- * column, or block), are also in another group, then that value can be
- * removed from the second group, for example:
+/*! intersection - when all of the possibilities (either two or three) for a
+ * value in a group (a row, column, or block), are also in another group, then
+ * that value can be removed from the second group. One of the things that
+ * intersect will always be a block, and the other will be either a row or
+ * column. That means that there are four possible types, row-block, block-row,
+ * column-block, and block-column. If the block is the one that only has two or
+ * three of the value in its possibilities, then the name starts with block-,
+ * otherwise it starts with row- or column-, for example:
  * \verbatim
  * .-------.-------.-------.
- * | * * * | * * * | X X X | X : A cell which may have the value X
- * |       |       | - - - | - : A cell which does not contain a candidate X
- * |       |       | - - - | * : Cells from which we can eliminate X
- * '-------'-------'-------'
- *    also call pointing
- * \endverbatim
- * Since the only copies of X (there can be 2 or three and it works the same
- * --conceivably there could be one copy of X but then we'd call that a hidden
- *  or naked single),
- * in the block are in the same row, then they have to occur in the row in the
- * block.  That means we KNOW that they can not occur in the same row in any
- * other block and all cells marked * can have X removed from their pvals (list
- * of possible values).
- * This works the same if the two or three are the only copy in a row or column,
- * and are also all in a block--you can remove X from the pvals of every cell
- * in the block:
- * \verbatim
+ * | * * * | * * * | - X X |
+ * |       |       | - - - | block-row intersection
+ * |       |       | - - - | block contains value in two places both in
+ * '-------'-------'-------' the row
+ *
+ *  X : A cell which may have the value X
+ *  - : A cell which does not contain a candidate X
+ *  * : Cells from which we can eliminate X
+ * 
+ *         It works the same when the shared cells are the only ones in the row
  * .-------.-------.-------.
- * | - - - | - - - | X X X | X : A cell which may have the value X
- * |       |       | * * * | - : A cell which does not contain a candidate X
- * |       |       | * * * | * : Cells from which we can eliminate X
+ * | - - - | - - - | X - X |
+ * |       |       | * * * | row-block intersection
+ * |       |       | * * * | row can only contain value in two possible places
  * '-------'-------'-------'
- * also call claiming or box-line reduction
- * \verbatim
- * .-------.
- * |     - |
- * |     - |
- * |     - |
- * '-------'
- * | * * X | X : A cell which may have the value X
- * | * * X | - : A cell which does not contain a candidate X
- * | * * X | * : Cells from which we can eliminate X
- * '-------'
- * |     - |
- * |     - |
- * |     - |
- * '-------'
+ *         And the same works for columns as well, of course.
+ * .-------.                    .-------.
+ * |     - |                    |   *   |
+ * |     - | column-block       |   *   | block-column
+ * |     - | intersection       |   *   | intersection
+ * .-------'                    '-------'
+ * | * * X | column only has 3  | - X - | block only has two possible locations
+ * | * * X | possible locations | - X - | for the value, both also in the column
+ * | * * X | for value all in   | - - - |
+ * '-------' the block          '-------'
+ * |     - |                    |   *   |
+ * |     - |                    |   *   |
+ * |     - |                    |   *   |
+ * '-------'                    '-------'
  * \endverbatim
- * We note that there are four types, row-box, column-box, box-row, and box-column
- * where whichever group is noted first, i.e. row, in row-box, is the one that
+ * We note that there are four types, row-block, column-block, block-row, and block-column
+ * where whichever group is noted first, i.e. row, in row-block, is the one that
  * only has two or three squares with a particular value, the the one mentioned
  * second, if those squares a all in that group, can have the value removed
  * from their pvals.
@@ -1322,7 +2049,7 @@ template<const unsigned int N>
 class intersection:public sudoku_method<N>
 {
 public:
-    intersection(){
+    intersection():sudoku_method<N>("intersection",2){
 	INTERSECTION_DEBUG std::cerr << "intersection()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1331,253 +2058,112 @@ public:
     apply(){
 	INTERSECTION_DEBUG std::cerr << "intersection.apply()\n";
 	board<N>* b=sudoku_method<N>::b;
-	// check row, column block
+	// check row-block, column-block, block-row, block-column
 	// first row
+	size_t count=0;
+	bool retval=false;
+	INTERSECTION_DEBUG std::cerr << "  checking for row-block-intersection\n";
 	for(size_t row=0;row<N;row++){
-	    std::map<size_t,std::vector<square*>>& mvs=
-		b->get_possibilities(GT_ROW,row);
-	    for(size_t val=0;val<N+1;val++){
-		size_t sz=mvs[val].size();
-		if(sz==2 || sz==3){
-		    std::vector<square*>& sqs=mvs[val]; // convenience
-		    bool already_set=true;
-		    for(size_t ctr=0;ctr<sqs.size();ctr++){
-			if(!sqs[ctr]->check_matched_type(square::AM_ROW_BLOCK_INTERSECTION)){
-			    already_set=false;
-			}
-		    }
-		    if(!already_set){
-			// a pair or triple on a row, if all in same block, can purge
-			// that value from other squares in the block
-			size_t bnum=b->get_block_num(sqs[0]->get_row(),sqs[0]->get_column());
-			bool can_reduce=true;
-			INTERSECTION_DEBUG std::cerr << "Following squares in same row have same pval: " << val << ":\n";
-			INTERSECTION_DEBUG std::cerr << *sqs[0];
-			for(size_t ctr=1;ctr<sz;ctr++){
-			    INTERSECTION_DEBUG std::cerr << *sqs[ctr];
-			    if(b->get_block_num(sqs[ctr]->get_row(),sqs[ctr]->get_column())!=bnum){
-				can_reduce=false;
-				break;
-			    }
-			}
-			INTERSECTION_DEBUG std::cerr << "-\n";
-			if(can_reduce){
-			    INTERSECTION_DEBUG std::cerr << "row: " << row << ", block: " << bnum << " intersection\n";
-			    RESPATH std::cerr << "row-block-intersection"
-				<< " r" << row+1 << " b" << bnum+1;
-			    b->purge_block_except(bnum, sqs,val);
-			    RESPATH std::cerr << "\n";
-			    for(size_t ctr=0;ctr<sz;ctr++){
-				// after the purge, the block will also only have
-				// 2 or three.  To avoid having it get picked up
-				// again, we flag it as both
-				sqs[ctr]->set_matched_type(square::AM_ROW_BLOCK_INTERSECTION);
-				sqs[ctr]->set_matched_type(square::AM_BLOCK_ROW_INTERSECTION);
-			    }
-			    sudoku_method<N>::incr_count();
-			    INTERSECTION_DEBUG std::cerr << "row v block intersection success\n";
-			    return true;
-			}
-		    }
-		}
+	    if(count+=b->discern_intersection(GT_ROW,row,GT_BLOCK)){
+		retval=true;
 	    }
 	}
+	INTERSECTION_DEBUG std::cerr << "  finished rows\n";
+	INTERSECTION_DEBUG std::cerr << "  checking for column-block-intersection\n";
 	for(size_t col=0;col<N;col++){
-	    std::map<size_t,std::vector<square*>>& mvs=
-		b->get_possibilities(GT_COLUMN,col);
-	    for(size_t val=0;val<N+1;val++){
-		size_t sz=mvs[val].size();
-		if(sz==2 || sz==3){
-		    std::vector<square*>& sqs=mvs[val]; // convenience
-		    bool already_set=true;
-		    for(size_t ctr=0;ctr<sqs.size();ctr++){
-			if(!sqs[ctr]->check_matched_type(square::AM_COLUMN_BLOCK_INTERSECTION)){
-			    already_set=false;
-			}
-		    }
-		    if(!already_set){
-			// a pair or triple in a column, if all in same block, can purge
-			// that value from other squares in the block
-			size_t bnum=b->get_block_num(sqs[0]->get_row(),sqs[0]->get_column());
-			bool can_reduce=true;
-			INTERSECTION_DEBUG std::cerr << "Following squares in same column have same pval: " << val << ":\n";
-			INTERSECTION_DEBUG std::cerr << *sqs[0];
-			for(size_t ctr=1;ctr<sz;ctr++){
-			    INTERSECTION_DEBUG std::cerr << *sqs[ctr];
-			    if(b->get_block_num(sqs[ctr]->get_row(),sqs[ctr]->get_column())!=bnum){
-				can_reduce=false;
-				break;
-			    }
-			}
-			INTERSECTION_DEBUG std::cerr << "-\n";
-			if(can_reduce){
-			    INTERSECTION_DEBUG std::cerr << "col: " << col << ", block: " << bnum << " intersection\n";
-			    RESPATH std::cerr << "column-block-intersection c"
-				<< col+1 << " b" << bnum+1;
-			    b->purge_block_except(bnum, sqs,val);
-			    RESPATH std::cerr << '\n';
-			    for(size_t ctr=0;ctr<sz;ctr++){
-				// after the purge, the block will also only have
-				// 2 or three.  To avoid having it get picked up
-				// again, we flag it as both
-				sqs[ctr]->set_matched_type(square::AM_COLUMN_BLOCK_INTERSECTION);
-				sqs[ctr]->set_matched_type(square::AM_BLOCK_COLUMN_INTERSECTION);
-			    }
-			    sudoku_method<N>::incr_count();
-			    INTERSECTION_DEBUG std::cerr << "column v block intersection success\n";
-			    return true;
-			}
-		    }
-		}
+	    if(count+=b->discern_intersection(GT_COLUMN,col,GT_BLOCK)){
+		retval=true;
 	    }
 	}
+	INTERSECTION_DEBUG std::cerr << "  finished columns\n";
+	INTERSECTION_DEBUG std::cerr << "  checking for block-row-intersection\n";
 	for(size_t block=0;block<N;block++){
-	    std::map<size_t,std::vector<square*>>& mvs=
-		b->get_possibilities(GT_BLOCK,block);
-	    for(size_t val=0;val<N+1;val++){
-		size_t sz=mvs[val].size();
-		if(sz==2 || sz==3){
-		    std::vector<square*>& sqs=mvs[val]; // convenience
-		    bool already_set=true;
-		    for(size_t ctr=0;ctr<sqs.size();ctr++){
-			if(!sqs[ctr]->check_matched_type(square::AM_BLOCK_ROW_INTERSECTION)){
-			    already_set=false;
-			}
-		    }
-		    if(!already_set){
-			// a pair or triple in a block, if all in same row, can purge
-			// that value from other squares in the row
-			size_t row=sqs[0]->get_row();
-			bool can_reduce=true;
-			INTERSECTION_DEBUG std::cerr << "Following squares in same block have same pval: " << val << ":\n";
-			INTERSECTION_DEBUG std::cerr << *sqs[0];
-			for(size_t ctr=1;ctr<sz;ctr++){
-			    INTERSECTION_DEBUG std::cerr << *sqs[ctr];
-			    if(sqs[ctr]->get_row()!=row){
-				can_reduce=false;
-				break;
-			    }
-			}
-			INTERSECTION_DEBUG std::cerr << "-\n";
-			if(can_reduce){
-			    RESPATH{
-				std::cerr << "block b" << block+1 << 
-				    " row r" << row+1 << " intersection";
-				std::cerr << " n" << val << "{";
-				bool first_time=true;
-				for(size_t ctr=0;ctr<sz;ctr++){
-				    if(!first_time){
-					std::cerr << ' ';
-				    }
-				    first_time=false;
-				    std::cerr << "r" << sqs[ctr]->get_row()+1
-					<< "c" << sqs[ctr]->get_column()+1;
-				}
-				std::cerr << '}';
-			    }
-
-			    b->purge_row_except(row,sqs,val);
-			    RESPATH std::cerr << "\n";
-			    for(size_t ctr=0;ctr<sz;ctr++){
-				// after the purge, the row will also only have
-				// 2 or three.  To avoid having it get picked up
-				// again, we flag it as both
-				sqs[ctr]->set_matched_type(square::AM_BLOCK_ROW_INTERSECTION);
-				sqs[ctr]->set_matched_type(square::AM_ROW_BLOCK_INTERSECTION);
-			    }
-			    sudoku_method<N>::incr_count();
-			    INTERSECTION_DEBUG std::cerr << "block v row intersection success\n";
-			    return true;
-			}
-		    }
-		}
+	    if(count+=b->discern_intersection(GT_BLOCK,block,GT_ROW)){
+		retval=true;
 	    }
 	}
+	INTERSECTION_DEBUG std::cerr << "  finished block-rows\n";
+	INTERSECTION_DEBUG std::cerr << "  checking for block-column-intersection\n";
 	for(size_t block=0;block<N;block++){
-	    std::map<size_t,std::vector<square*>>& mvs=
-		b->get_possibilities(GT_BLOCK,block);
-	    for(size_t val=0;val<N+1;val++){
-		size_t sz=mvs[val].size();
-		std::vector<square*>& sqs=mvs[val]; // convenience
-		bool already_set=true;
-		for(size_t ctr=0;ctr<sqs.size();ctr++){
-		    if(!sqs[ctr]->check_matched_type(square::AM_BLOCK_COLUMN_INTERSECTION)){
-			already_set=false;
-		    }
-		}
-		if((sz==2 || sz==3) && !already_set){
-		    // a pair or triple in a block, if all in same column, can purge
-		    // that value from other squares in the column
-		    size_t col=sqs[0]->get_column();
-		    bool can_reduce=true;
-		    INTERSECTION_DEBUG std::cerr << "Following squares have same val: " << val << ":\n";
-		    INTERSECTION_DEBUG std::cerr << *sqs[0];
-		    for(size_t ctr=1;ctr<sz;ctr++){
-			INTERSECTION_DEBUG std::cerr << *sqs[ctr];
-			if(sqs[ctr]->get_column()!=col){
-			    can_reduce=false;
-			    break;
-			}
-		    }
-		    INTERSECTION_DEBUG std::cerr << "-\n";
-		    if(can_reduce){
-			RESPATH{
-			    std::cerr << "block-column-intersection";
-			    std::cerr << " b" << block+1;
-			    std::cerr << " c" << col+1;
-			    std::cerr << " n" << val << "{";
-			    bool first_time=true;
-			    for(size_t ctr=0;ctr<sz;ctr++){
-				if(!first_time){
-				    std::cerr << ' ';
-				}
-				first_time=false;
-				std::cerr << "r" << sqs[ctr]->get_row()+1
-				    << "c" << sqs[ctr]->get_column()+1;
-			    }
-			    std::cerr << '}';
-			}
-			b->purge_column_except(col,sqs,val);
-			RESPATH std::cerr << "\n";
-			for(size_t ctr=0;ctr<sz;ctr++){
-			    // after the purge, the column will also only have
-			    // 2 or three.  To avoid having it get picked up
-			    // again, we flag it as both
-			    sqs[ctr]->set_matched_type(square::AM_BLOCK_COLUMN_INTERSECTION);
-			    sqs[ctr]->set_matched_type(square::AM_COLUMN_BLOCK_INTERSECTION);
-			}
-			sudoku_method<N>::incr_count();
-			INTERSECTION_DEBUG std::cerr << "block v column intersection success\n";
-			return true;
-		    }
-		}
+	    if(count+=b->discern_intersection(GT_BLOCK,block,GT_COLUMN)){
+		retval=true;
 	    }
 	}
-
-	INTERSECTION_DEBUG std::cerr << "intersection failure\n";
-	return false;
+	INTERSECTION_DEBUG std::cerr << "  finished block-columns\n";
+	INTERSECTION_DEBUG std::cerr << "intersection().apply() finished; found " << count << " intersections, returning\n";
+	sudoku_method<N>::count_add(count);
+	return retval;
     }
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(1,\"intersection\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"intersection", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
 /*! x-wing looks for interlocking pairs of rows and columns each containing the
- * same pair of possibilities.  It calls interlock_apply() to do the work, which
+ * same possibility.  It calls interlock_apply() to do the work, which
  * treats x-wing as a member of the class of interlock algorithms like swordfish
- * and jellyfish
+ * and jellyfish.
+ *
+ * if there are only two cells with possible 4s in row 3, in columns 3 and 6
+ * and also only two cells with possible     4s in row 8, in columns 3 and 6
+ * then any other 4s in columns 3 and 6 can be removed.
+ * Conversely,
+ * if there are only two cells with possible 4s in column 3, in rows 3 and 6
+ * and also only two cells with possible     4s in column 8, in rows 3 and 6
+ * then any other 4s in rows 3 and 6 can be removed.
+ *
+ *       any 2s in columns 3 and 6 can be removed
+ *                  /        \
+ * rows   1   2   3   4   5   6   7   8   9
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   1  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   2  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   3  |   |   |4-----------4  |   |   |   | only 2 4s on this row
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   4  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   5  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   6  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   7  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   8  |   |   |4-----------4  |   |   |   | only 2 4s on this row
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   9  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
  */
 template<const unsigned int N>
 class x_wing:public sudoku_method<N>
 {
 public:
-    x_wing(){
+    x_wing():sudoku_method<N>("x-wing",4){
 	X_WING_DEBUG std::cerr << "x_wing()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1595,37 +2181,39 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(2,\"x-wing\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"x-wing", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
-/*! The y-wing class implements the algorithm to search for three cells each 
+/*! The y-wing class looks for three cells each 
  * with 2 members of their pvals, but between them only three pvals.  One of
  * the cells is the pivot and shares a member of pvals with each of the other
  * two.  They in turn, share a third pval.  For example, the three squares,
- * (with the pivot in the middle) could have pvals {1,3} {3,7} {1,7}.  
+ * (with the pivot in the middle) could have pvals {1,8} {1,6} {6,8}.  
  * The first has to be in a group with the second, and the second in a group
  * with the third (row, column or block is a group), but all three can't be in
  * the same group.  If all that is true, then in the intersection of squares
  * visible from the first and the third, we can remove their shared value (in
- * the example, the 1) from all the square's pvals.
+ * the example, the 8) from all the square's pvals.
+ *
+ * The actual work is done by board::y_wing_apply()
  */
 template<const unsigned int N>
 class y_wing:public sudoku_method<N>
 {
 public:
-    y_wing(){
+    y_wing():sudoku_method<N>("y-wing",4){
 	Y_WING_DEBUG std::cerr << "y_wing()\n";
     }
     //! Called by block<N>::heuristic_solution 
     virtual
     bool
     apply(){
-	Y_WING_DEBUG std::cerr << "y_wing.apply()\n";
+	Y_WING_DEBUG std::cerr << "y_wing::apply()\n";
 	board<N>* b=sudoku_method<N>::b;
 	if(b->y_wing_apply()){
 	    Y_WING_DEBUG std::cerr << "success\n";
@@ -1637,25 +2225,75 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(2,\"y-wing\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"y-wing", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
 /*! 
  * The solution class swordfish, like x-wing, calls interlock_apply() to do
  * the dirty work.  The only difference is that x-wings have interlocking
- * pairs of column and rows with the same pairs of possibilities, and
- * swordfish has interlocking triples of everything, etc...
+ * pairs of column and rows with the same number, and
+ * swordfish has interlocking triples of rows and columns with triples of the
+ * same number.
+ * 
+ * Assume the marked cells are the only ones in their rows with 4s
+ * 	row 1 has a 4 in columns 1 and 5
+ * 	row 5 has a 4 in columns 5 and 9
+ * 	row 8 has a 4 in columns 1 and 9
+ * This is a swordfish in rows, i.e. three rows with pairs
+ * that happen between them to only occupy the same three columns
+ * If that happens, we can remove any other 4s from columns 1,5,9
+ *
+ *        Any number of 4s in columns 1, 5, and 9.
+ *                      cols
+ * rows   1   2   3   4   5   6   7   8   9
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   1  |*---------------*  |   |   |   |   | only 2 4s in this row
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   2  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   3  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   4  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   5  |   |   |   |   |*---------------*  | only 2 4s in this row
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   6  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   7  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   8  |*-------------------------------*  | only 2 4s in this row
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |   |   |
+ *   9  |   |   |   |   |   |   |   |   |   |
+ *      |   |   |   |   |   |   |   |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
  */
 template<const unsigned int N>
 class swordfish:public sudoku_method<N>
 {
 public:
-    swordfish(){
+    swordfish():sudoku_method<N>("swordfish",4){
 	SWORDFISH_DEBUG std::cerr << "swordfish()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1673,26 +2311,27 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(2,\"swordfish\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"swordfish", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
 /*! 
  * The solution class jellyfish, like x-wing, and swordfish, calls
  * interlock_apply() to do the dirty work.  The only difference is that x-wings
- * have interlocking pairs of column and rows with the same pairs of
- * possibilities, swordfish have interlocking triples of everything, and
- * jellyfish have interlocking quads of everything.
+ * have interlocking pairs of column and rows with the same possibile number
+ * swordfish have interlocking triples of of rows and columns with the same
+ * possibility, and jellyfish have interlocking quads of rows and columns
+ * with the same possibility.
  */
 template<const unsigned int N>
 class jellyfish:public sudoku_method<N>
 {
 public:
-    jellyfish(){
+    jellyfish():sudoku_method<N>("jellyfish",4){
 	JELLYFISH_DEBUG std::cerr << "jellyfish()\n";
     }
     //! Called by block<N>::heuristic_solution 
@@ -1710,11 +2349,11 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(2,\"jellyfish\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"jellyfish", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
@@ -1732,7 +2371,7 @@ public:
  *     sq2   |3|     1     also has one asserts 3
  *     sq3    3     |6|    also has 3 asserts 6
  *     sq4   |1|     6     also has 6 asserts 1 AND CAN SEE SQUARE 1
- * if at any point a square asserts ownership of the same value as
+ * if atany point a square asserts ownership of the same value as
  * the original square, and they can see each other, then a proof by
  * contradiction has occured that the first square must use the other pval,
  * in this case 3.
@@ -1741,8 +2380,8 @@ template<const unsigned int N>
 class xy_chain:public sudoku_method<N>
 {
 public:
-    xy_chain(){
-	XY_CHAIN_DEBUG std::cerr << "xy_chain() constructed\n";
+    xy_chain():sudoku_method<N>("xy-chain",5){
+	XY_CHAIN_DEBUG std::cerr << "xy_chain()\n";
     }
     
     //! Called by block<N>::heuristic_solution 
@@ -1754,13 +2393,13 @@ public:
 	board<N>* b=sudoku_method<N>::b;
 	for(size_t row=0;row<N;row++){
 	    for(size_t col=0;col<N;col++){
-		for(size_t c=0;c<2;c++){
-		    square &sq=b->b[row][col];
-		    if(sq.size()==2){
-			// yay, found the head of a chain.
-			// owned will be 0 and then 1
+		square &sq=b->b[row][col];
+		if(sq.size()==2){
+		    chain.push_back(&sq);
+		    // yay, found the head of a chain.
+		    // owned will be 0 and then 1
+		    for(size_t c=0;c<2;c++){
 			sq.set_owned(c);
-			chain.push_back(&sq);
 			if(b->xy_chain_apply(chain)){
 			    // yay, found one!
 			    sudoku_method<N>::incr_count();
@@ -1768,8 +2407,8 @@ public:
 			    XY_CHAIN_DEBUG b->print_large();
 			    return true;
 			}
-			chain.pop_back();
 		    }
+		    chain.pop_back();
 		}
 	    }
 	}
@@ -1779,11 +2418,286 @@ public:
 
     //! Called by block to pass in a pointer to board and have class call back to register
     virtual
-    void register_strategy(board<N>* b)
+    void register_strategy(board<N>* b,size_t l)
     {
-	REGISTER_STRATEGY_DEBUG std::cerr << "register_strategy(2,\"xy-chain\")\n";
 	sudoku_method<N>::b=b;
-	b->register_strategy(1,"xy-chain", this);
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
+    };
+};
+
+/*! 
+ * The solution class simple_color, looking for rows, columns and blocks
+ * with only two squares with that pval.
+ * for val in 1-9
+ *     find a row column or block with only two squares with that pval
+ *     color one and push it on the stack
+ *     while stack not empty
+ *         pop a square from stack
+ *         push at end of vector
+ *         for row col block find only two of val in pval and
+ *             color other square not my color
+ *             push color on stack
+ *     now that stack is empty we'll deal with vector
+ *     for ctr=0; ctr < vector.len; ctr++
+ *         for ctr2=ctr+1;ctr2<vector.len;ctr2++
+ *             if(vector[ctr2] is different color from vector[ctr]
+ *                 find shared neighbors of vector[ctr] and vector[ctr2]
+ *                 any of them that aren't colored and have val in pvals
+ *                     clear val from pvals
+ *         
+ */
+template<const unsigned int N>
+class simple_color:public sudoku_method<N>
+{
+public:
+    simple_color():sudoku_method<N>("simple color",5){
+	SIMPLE_COLOR_DEBUG std::cerr << "simple_color()\n";
+    }
+    
+    //! Called by block<N>::heuristic_solution 
+    virtual
+    bool
+    apply(){
+	SIMPLE_COLOR_DEBUG std::cerr << "simple_color.apply()\n";
+	board<N>* b=sudoku_method<N>::b;
+	// clear all colors to none
+	b->clear_colors();
+	SIMPLE_COLOR_LARGE_PRINT_DEBUG{
+	    std::cerr << toorange << "board before simple color\n" << toblack;
+	    b->print_large();
+	}
+	bool retval=false;
+	for(size_t pval=1;pval<N+1;pval++){
+	    SIMPLE_COLOR_DEBUG std::cerr << "  checking pval " << pval << '\n';
+	    // look for any candidate we can seed the stack with
+	    bool found_first=false;
+	    std::map<size_t,std::vector<square*>> mvs;
+	    for(size_t gt=GT_ROW;gt<GT_BLOCK+1;gt++){
+		SIMPLE_COLOR_DEBUG{
+		    std::cerr << "    walking through " << grouptype_2_name[gt] << '\n';
+		}
+		for(size_t which=0;which<N;which++){
+		    mvs=b->get_possibilities(static_cast<grouptype>(gt),which);
+		    if(mvs[pval].size()==2
+			    && mvs[pval][0]->get_color()==color::none
+			    && !mvs[pval][0]->check_applied_simple_color(pval)){
+			SIMPLE_COLOR_DEBUG{
+			    std::cerr << "    found candidates on " 
+				<< grouptype_2_name[gt] << ' '
+				<< which << ", pval " << pval << '\n';
+			    for(auto sq : mvs[pval]){
+				std::cerr << "      "
+				    << print_sq_rcp(sq) << '\n';
+			    }
+			}
+			found_first=true;
+			break;
+		    }
+		}
+		if(found_first) break;
+	    }
+	    if(!found_first){
+		SIMPLE_COLOR_DEBUG{
+		    std::cerr << "    found no rows/block/columns"
+			" with only two squares with pval " << pval << '\n';
+		}
+		continue;
+	    }
+	    std::stack<square *> sqs;
+	    mvs[pval][0]->set_color(color::red);
+	    sqs.push(mvs[pval][0]);
+	    SIMPLE_COLOR_DEBUG{
+		std::cerr << "    first candidate on stack\n";
+		std::cerr << "      " << print_sq_rcp(sqs.top()) << '\n';
+	    }
+	    std::vector<square*> chain;
+	    while(!sqs.empty()){
+		square* sq=sqs.top();
+		sqs.pop();
+		chain.push_back(sq);
+		SIMPLE_COLOR_DEBUG{
+		    std::cerr << "  top of loop\n"
+			         "    o popping a square\n"
+				 "    o pushing it on the chain\n"
+				 "    o and looking for more links to color and push on stack\n";
+		    std::cerr << "    popped "
+			<< print_sq_rcp_color(sq)
+			<< " from the stack\n"
+			<< "      stack size now: " << sqs.size() << '\n'
+			<< "      chain size is: " << chain.size() << '\n';
+		}
+		color curcolor=sq->get_color(), othercolor;
+		if(curcolor==color::red){
+		    othercolor=color::green;
+		}else if(curcolor==color::green){
+		    othercolor=color::red;
+		}else{
+		    SIMPLE_COLOR_DEBUG{
+			std::cerr << "popped a square off of the stack and it was neither red or green! Aborting.\n"
+			    << print_sq_rcp_color(sq) << '\n';
+		    }
+		    continue;
+		}
+
+		for(size_t gt=GT_ROW;gt<GT_BLOCK+1;gt++){
+		    SIMPLE_COLOR_DEBUG{
+			std::cerr << "    walking through " << grouptype_2_name[gt] << '\n';
+		    }
+		    switch(gt){
+			case GT_ROW:
+			    mvs=b->get_possibilities(static_cast<grouptype>(gt),sq->get_row());
+			    break;
+			case GT_COLUMN:
+			    mvs=b->get_possibilities(static_cast<grouptype>(gt),sq->get_column());
+			    break;
+			case GT_BLOCK:
+			    mvs=b->get_possibilities(static_cast<grouptype>(gt),
+				b->get_block_num(sq));
+			    break;
+		    }
+		    square* other=0;
+		    if(mvs[pval].size()==2){
+			if(mvs[pval][0]==sq){
+			    other=mvs[pval][1];
+			}else if(mvs[pval][1]==sq){
+			    other=mvs[pval][0];
+			}else{
+			    SIMPLE_COLOR_DEBUG{
+				std::cerr << "neither square is sq!\n";
+				std::cerr << "sq: "
+				    << print_sq_rcp_color(sq) << '\n'
+				    << print_sq_rcp_color(mvs[pval][0]) << '\n'
+				    << print_sq_rcp_color(mvs[pval][1]) << '\n';
+			    }
+			    break;
+			}
+			if(other->get_color()!=color::none){
+			    SIMPLE_COLOR_DEBUG{
+				std::cerr << "      found another square : "
+				    << print_sq_rcp_color(other) << '\n'
+				    << "        but it is already colored, skipping\n";
+			    }
+			    other=0;
+			}
+			    
+		    }
+		    if(other){
+			SIMPLE_COLOR_DEBUG{
+			    std::cerr << "      found another square: "
+				<< print_sq_rcp_color(other) << '\n';
+			    std::cerr << "        setting to ";
+			    other->print_color(std::cerr,othercolor);
+			    std::cerr << " and pushing on stack\n";
+			}
+			other->set_color(othercolor);
+			sqs.push(other);
+		    }
+		}
+
+	    } // while (!sqs.empty())
+	    SIMPLE_COLOR_DEBUG{
+		std::cerr << "    popped all of the stack, chain length "
+		    << chain.size() << " on pval "
+		    << pval << "\n";
+		size_t chainval=0;
+		for(square* sq : chain){
+		    sq->set_applied_simple_color(pval);
+		    std::cerr << "    chain[" << chainval << "] "
+			<< print_sq_rcp_color(sq) << '\n';
+		    ++chainval;
+		}
+	    }
+	    if(chain.size()<3){
+		for(square* sq : chain){
+		    sq->set_color(color::none);
+		}
+		SIMPLE_COLOR_DEBUG{
+		    std::cerr << "    chain size too small (" << chain.size()
+			<< ") for a simple color chain (need 3 or more)\n";
+		}
+		continue;
+	    }
+	    RESPATH{
+		std::cerr << "simple-color n" << pval << '{';
+		bool firsttime=true;
+		for(square* sq : chain){
+		    if(!firsttime){
+			std::cerr << ' ';
+		    }
+		    firsttime=false;
+		    std::cerr << print_sq_rc_plus(sq);
+		}
+		std::cerr << "} ==>";
+	    }
+	    for(size_t ctr1=0;ctr1<chain.size()-1;ctr1++){
+		color our_color=chain[ctr1]->get_color();
+
+		for(size_t ctr2=ctr1+1;ctr2<chain.size();ctr2+=1){
+
+		    if(chain[ctr2]->get_color()!=our_color){
+			SIMPLE_COLOR_DEBUG{
+			    std::cerr << "    looking for common neighbors of:\n";
+			    std::cerr << "      chain[" << ctr1 << "] ("
+				<< print_sq_rcp_color(chain[ctr1]) << ")\n"
+				<< "      chain[" << ctr2 << "] ("
+				<< print_sq_rcp_color(chain[ctr2]) << ")\n";
+			}
+			std::vector<square*> inter;
+			std::vector<square*>::iterator vi;
+			std::set<square*> sqs1i=b->get_neighbors(chain[ctr1],&square::no_color_filt);
+			std::set<square*> sqs2i=b->get_neighbors(chain[ctr2],&square::no_color_filt);
+			inter.resize(sqs1i.size()+sqs2i.size());
+			vi=std::set_intersection(sqs1i.begin(),sqs1i.end(),sqs2i.begin(),sqs2i.end(),inter.begin());
+			inter.resize(vi-inter.begin());
+			SIMPLE_COLOR_DEBUG{
+			    std::cerr << "      they share "
+				<< inter.size() << " neighbors, looking"
+			    		" for pval: " << pval << "\n";
+			}
+			bool did_something=false;
+			for(square * sq : inter){
+			    SIMPLE_COLOR_DEBUG{
+				std::cerr << "        "
+				    << print_sq_rcp_color(sq) << '\n';
+			    }
+			    did_something|=b->clear_pval_val(sq->get_row(),sq->get_column(),pval);
+			}
+			if(did_something){
+			    SIMPLE_COLOR_DEBUG{
+				std::cerr << "    cleared one or more pvals!\n";
+				for(square* sq : inter){
+				    std::cerr << "        "
+					<< print_sq_rcp_color(sq) << '\n';
+				}
+			    }
+			    sudoku_method<N>::incr_count();
+			    retval=true;
+			}
+		    } //if(chain[ctr2]->get_color()!=our_color)
+		} // ctr2
+	    } // ctr1
+	    RESPATH{
+		std::cerr << '\n';
+	    }
+	} //for(size_t pval=1;pval<N+1;pval++)
+	SIMPLE_COLOR_LARGE_PRINT_DEBUG{
+	    std::cerr << topurple << "board after simple color\n" << toblack;
+	    b->print_large();
+	}
+	b->clear_colors();
+	SIMPLE_COLOR_DEBUG std::cerr << "failed\n";
+	return retval;
+    }
+
+    //! Called by block to pass in a pointer to board and have class call back to register
+    virtual
+    void register_strategy(board<N>* b,size_t l)
+    {
+	SIMPLE_COLOR_DEBUG std::cerr << "registering simple_color\n";
+	sudoku_method<N>::b=b;
+	sudoku_method<N>::sort_level=l;
+	b->register_strategy(this);
     };
 };
 
@@ -1800,91 +2714,61 @@ public:
      * dig out cells with symmetry
      */
     enum symtype{ ST_NONE=0, ST_HORIZ=1, ST_VERT=2, ST_HV=4,ST_ROT=8,
-    	ST_ROT90=16,ST_ROT180=32,ST_ROT270=64,ST_MDIAG=128,ST_ADIAG=256,ST_MADIAG=512};
-    std::vector<std::string> symtype_st={"ST_NONE","ST_HORIZ","ST_VERT","ST_HV","ST_ROT","ST_ROT90","ST_ROT180","ST_ROT270","ST_MDIAG","ST_ADIAG","ST_MADIAG"};
-    friend naked_single<N>;//!<friend for direct access to board
+    	ST_ROT90=16,ST_ROT180=32,ST_ROT270=64,ST_MDIAG=128,
+	ST_ADIAG=256,ST_MADIAG=512
+    };
+    //! this vector is used to debug print symtype
+    std::vector<std::string> symtype_st={"ST_NONE","ST_HORIZ","ST_VERT",
+	"ST_HV","ST_ROT","ST_ROT90","ST_ROT180","ST_ROT270","ST_MDIAG",
+	"ST_ADIAG","ST_MADIAG"
+    };
+    template<const unsigned int>
+    friend
+    std::ostream& operator<<(std::ostream&,symtype); //!<friend for access to board
+    //friend naked_single<N>;//!<friend for direct access to board
     friend hidden_single<N>;//!<friend for direct access to board
+    friend intersection<N>;//!<friend for direct access to board
     friend naked_double<N>;//!<friend for direct access to board
     friend hidden_double<N>;//!<friend for direct access to board
     friend naked_triple<N>;//!<friend for direct access to board
     friend hidden_triple<N>;//!<friend for direct access to board
     friend naked_quad<N>;//!<friend for direct access to board
+    friend hidden_quad<N>;//!<friend for direct access to board
     friend xy_chain<N>;//!<friend for direct access to board
-    template<const unsigned int>
-    friend
-    std::ostream& operator<<(std::ostream&,symtype);
+    friend simple_color<N>;//!<friend for direct access to board
+    friend y_wing<N>;//!<friend for direct access to board
+    friend x_wing<N>;//!<friend for direct access to board
+    friend swordfish<N>;//!<friend for direct access to board
+    friend jellyfish<N>;//!<friend for direct access to board
+
+    // next two used by constructor for board that takes a string
+    //! exception if constructor with string has a short string
     class board_shortstring: public std::exception{};
+    //! exception if constructor with string has a long string
     class board_longstring: public std::exception{};
+
     board(); //!< default constructor
     board(std::string);//!<constructor which takes list of values and blanks
     board(const board&); //!< copy constructor
     board(std::vector<square>); //!< constructor which takes vectors of squares
+    board(std::initializer_list<square>); //!< constructor for initializer list
     board&
     operator=(const board&); //!< assignment operator
     void
-    print_counts();
+    print_counts(); //!< print to std::cout counts of heuristic application
     void
-    print(); //!< print to std::cerr a simple representation of the board
+    print() const; //!< print to std::cout a simple representation of the board
     void
-    print_large(); //!< print to std::cerr the values and pvals
-    void
-    print_just_pvals(); //!< print to std::cerr the values and pvals
-    void
-    print_st(std::ostream& os,symtype st)
-    {
-	if(!st){
-	    os << "ST_NONE";
-	}else{
-	    bool first=true;
-	    for(size_t ctr=1;st;ctr++){
-		if(st&1){
-		    if(!first){
-			os << '|';
-		    }
-		    first=false;
-		    os<<symtype_st[ctr];
-		}
-		st=symtype(st>>1);
-	    }
-	}
-    }
+    print_large(); //!< print to std::cout the board with values and pvals
     bool
     generate(); //!< create a complete board with all squares set
-    void
-    inline
-    dig_one(size_t row,size_t col, board& brd, symtype st);
+    /*! a routine to dig out a cell from a completed board while respecting
+     * symmetry, i.e. if there is horizontal symettry, after generating
+     * a random square, it will also generate the same square reflected
+     * across the x-axes.
+     */
     bool
     dig_puzzle(symtype,size_t max_clues=32,bool status=false);
-    //! generate possible values for one square at row and col
-    void
-    generate_pvals(unsigned int row, unsigned int col,bool mark_invalid=true);
-    //! update data structure which keeps track of maps of values to squares
-    void
-    update_possibilities();
-    //! Update all the pvals on the board
-    void
-    update_pvals();
-    //! For 2 squares remove a pval from their shared neighbors
-    bool
-    update_pval_for_squares(square& sq1,square& sq2, size_t val);
-    //! When a square has been set, all squares which can see that square have
-    //! the square's val removed form their pvals
-    void
-    update_pvals_for_square(size_t row, size_t col);
-    //! remove set values in square's column from pvals
-    void
-    prune_column_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
-    //! remove set values in square's row from pvals
-    void
-    prune_row_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
-    //! remove set values in square's block from pvals
-    void
-    prune_block_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
-    //! Check if square at row and col has pvals equal to input set pvs
-    bool
-    check_pval_set(size_t row,size_t col,std::set<size_t>pvs){
-	return b[row][col].check_pval_set(pvs);
-    };
     //! return true if the puzzle is correct with all squares filled in
     bool
     is_solved();
@@ -1895,8 +2779,10 @@ public:
     size_t
     get_val(size_t row, size_t col){ return b[row][col].get_val();}
     //! solve the puzzle using a brute force solution with back up.
-    bool
-    brute_force_solution();
+    /*! 
+     */
+    size_t
+    brute_force_solution(ssize_t how_many,bool return_board=false);
     //! solve the puzzle using a brute force solution with back up and try alternatives.
     size_t
     brute_force_check(bool stopafter2=true);
@@ -1906,70 +2792,183 @@ public:
     //! return number of set squares
     size_t
     count();
-    //! return the number of times we have set squares
-    size_t
-    get_count();
     //! return number of times we've backed up in brute force
     size_t get_backed_count(){ return backed_count; }
+    size_t
+    get_strategy_count(std::string);
+    //! convert board to std::string
+    operator std::string(){ return to_string(); };
+    //! look for strategy with name and sets level then resorts
+    bool
+    set_strategy_sort_level(std::string name,size_t level);
+    //! call back method called by each solution class
+    void
+    register_strategy(sudoku_method<N>*);
+    std::vector<square>&
+    operator[](size_t which){ return b[which]; };
+    //! Wrapper around square::set_val(val,set_pval) which keeps count in sync
+    void
+    set_val(size_t row,size_t col,size_t val,bool set_pval=true);
+    size_t
+    size(){return b.size(); }
+    std::vector<std::vector<square>>::iterator
+    begin(){ return b.begin(); };
+    std::vector<std::vector<square>>::iterator
+    end(){ return b.end(); };
+
+private:
+    // private methods
+    //! A helper routine for brute_force_solution()
+    /* This routine walks through the board starting from r0c0 and looks
+     * for the first square that has more than one pval and is unlocked
+     * \param first_target tells us the place to start looking
+     * \param checkb the board to check
+     * \return the index of the new first target
+     */
+    size_t
+    get_first_target(size_t first_target,board& checkb)
+    {
+	size_t max=N*N;
+	for(;first_target<max;first_target++){
+	    size_t row=first_target/N, col=first_target%N;
+	    square& sq=checkb.b[row][col];
+	    BRUTE_CHECK_DEBUG{
+		std::cerr << "  square(" << row << ", " << col << ") " << sq.size();
+		std::cerr << (sq.size()==1?" possibility, ":" possibilities, ");
+		std::cerr << (sq.is_locked()?"locked":"not locked");
+	    }
+	    if(sq.size()>1 && !sq.is_locked()){
+		BRUTE_CHECK_DEBUG std::cerr << " HIT!!!\n";
+		// we found first place to change. Note if locked, there should only
+		// be one, so the check is redundant, but something may change
+		// later, so I code defensively.
+		break;
+	    }
+	    BRUTE_CHECK_DEBUG std::cerr << '\n';
+	}
+	return first_target;
+    }
+
+    //! generate possible values for one square at row and col
+    void
+    generate_pvals(unsigned int row, unsigned int col,bool mark_invalid=true);
+    //! update data structure which keeps track of maps of values to squares
+    void
+    update_possibilities();
+    //! Update all the pvals on the board then call update_possibilities()
+    void
+    update_pvals();
+    //! When a square has been set, all squares which can see that square have
+    //! the square's val removed form their pvals
+    void
+    update_pvals_for_square(size_t row, size_t col);
+    //! check for the pvals of a square being equal to a set of pvals
+    /*! this test is used in test to check to see if something that
+     * was supposed to affect the pvals in a certain way actually did
+     * \param row the row of the square
+     * \param col the column of the square
+     * \param pvals a set of all the pvals we expect to find
+     * \return true iff the pvals of the square exactly match pvals
+     */
+#if defined(SUDOKU_TESTING)
+    // normally no one needs access to this outside of board and friends
+    // but when testing they they to check effects of pvals of various things
+public:
+#endif
+    bool
+    check_pval_set(size_t row, size_t col, std::set<size_t> pvals)
+    {
+	CHECK_PVAL_SET_DEBUG{
+	    std::cerr << "pvals: ";
+	    for(size_t val : pvals){
+		std::cerr << std::setw(2) << val;
+	    }
+	    std::cerr << '\n';
+	}
+	square& sq=b[row][col];
+	CHECK_PVAL_SET_DEBUG std::cerr << sq;
+	if(sq.size() != pvals.size()) return false;
+	for(size_t ctr=0;ctr<sq.size();ctr++){
+	    if(pvals.find(sq[ctr])==pvals.end()){
+		return false;
+	    }
+	}
+	return true;
+    }
+#if defined(SUDOKU_TESTING)
+private:
+#endif
+    //! remove set values in square's column from pvals. called from generate_pvals
+    void
+    inline
+    prune_column_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
+    //! remove set values in square's row from pvals. called from generate_pvals
+    void
+    inline
+    prune_row_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
+    //! remove set values in square's block from pvals. called from generate_pvals
+    void
+    inline
+    prune_block_pvals(unsigned int row, unsigned int col,std::vector<unsigned int> &sq,bool mark_invalid=true);
+    //! Set color to none on whole board
+    void
+    clear_colors(){
+	for(size_t row=0;row<N;row++){
+	    for(size_t col=0;col<N;col++){
+		b[row][col].set_color(color::none);
+	    }
+	}
+    }
+    //! helper routine so we don't have to duplicated this code two places
+    /* this routine passes to std::sort beginning and ending iterators for
+     * sorted strategies as well as a comparison routine to tell them if
+     * one is less than another.
+     */
+    void
+    sort_strategies()
+    {
+	std::sort(sorted_strategies.begin(),sorted_strategies.end(),
+	    [](sudoku_method<N>*m1,sudoku_method<N>*m2){
+		return m1->get_sort_level() < m2->get_sort_level();
+	    }
+	);
+    }
     //! call register_strategies on all solution classes
     void
     register_strategies();
-    //! call back method called by each solution class
-    void
-    register_strategy(size_t level,std::string name,sudoku_method<N>*);
-    //! how many time strategies of a particular level have been applied
-    size_t
-    get_strategy_counts(size_t level);
-    //! make all strategy counts 0
-    void
-    clear_strategy_counts();
     //! how many time a particular strategy has been applied
-    size_t
-    get_strategy_count(std::string);
-    //! returns true if squares share block, column, or row
-    bool
-    can_see(const square& sq1,const square& sq2){
-	if((get_block_num(sq1)==get_block_num(sq2)
-		    || sq1.get_row()==sq2.get_row()
-		    || sq1.get_column()==sq2.get_column())){
-	    return true;
-	}
-	return false;
-    }
     //! given a row and column number return a block number 0-8
     size_t
-    get_block_num(size_t row, size_t col){ return root*(row/root)+col/root; };
+    get_block_num(size_t row, size_t col){ return root*(row/root)+col/root; }
+    //! given a reference to a square return a block number 0-8
     size_t
-    get_block_num(const square&sq){ return get_block_num(sq.get_row(),sq.get_column());};
+    get_block_num(const square&sq){ return get_block_num(sq.get_row(),sq.get_column());}
+    //! given a pointer to a square return a block number 0-8
+    size_t
+    get_block_num(const square*sq){ return get_block_num(*sq); }
+    //! call to_string() and return a std::string representation of the board
     //! helper routine called by all hidden_XXX strategies except for hidden single via hidden_apply
     bool
-#if defined(SHOW_RESPATH)
-    discern_hidden(size_t, std::map<size_t,std::vector<square*>>&,grouptype);
-#else
-    discern_hidden(size_t, std::map<size_t,std::vector<square*>>&);
-#endif
+    discern_hidden(size_t, grouptype, size_t);
     //! helper routine called by all naked_XXX strategies except for naked single via naked_apply
     bool
-#if defined(SHOW_RESPATH)
-    discern_naked(size_t, std::vector<square*>,grouptype);
-#else
-    discern_naked(size_t, std::vector<square*>);
-#endif
-
-	//if(discern_naked(level, get_squares(GT_ROW,row))){
+    discern_naked(size_t, grouptype, size_t);
+    //! helper routine called by intersection's apply method to avoid having the same code four times.
+    size_t
+    discern_intersection(grouptype,size_t, grouptype);
     //! helper routine called by x-wing, swordfish, and jellyfish via interlock apply
     bool
     discern_interlock(size_t, grouptype);
     //! calls discern_hidden() for each row, column, and block as appropriate until one succeeds or all fail
-    bool
+    size_t
     hidden_apply(size_t level);
     //! calls discern_naked() for each row, column, and block as appropriate until one succeeds or all fail
-    bool
+    size_t
     naked_apply(size_t level);
     //! calls discern_interlock twice, once for rows, once for columns as appropriate
     bool
     interlock_apply(size_t level);
-    //! xy_chain_apply
+    //! xy_chain_apply proof by chains of implications that end in contradiction
     bool
     xy_chain_apply(std::vector<square*>& sv);
     //! walk each cell until a y-wing is found and applied or all cells are checked
@@ -1978,6 +2977,9 @@ public:
     //! returns the right row of row/column/or block possibilities map as requested
     std::map<size_t,std::vector<square*>>&
     get_possibilities(grouptype what,size_t which);
+    //! helper routine used by naked_apply to get argument to pass to discern naked 
+    std::vector<square*>
+    get_squares(grouptype what,size_t which,size_t depth,size_t min=2);
     //! helper routine used by naked_apply to get argument to pass to discern naked 
     std::vector<square*>
     get_squares(grouptype what,size_t which);
@@ -2014,15 +3016,9 @@ public:
     //! return a set of all squares in the same row, column, or block as sq possibly filtered
     std::set<square*>
     get_neighbors(square* sq,bool (square::*)(square*)=&square::true_filt,bool not_self=true);
-    operator std::string();
-    
-private:
     //! Wrapper around square::clear_pval_val(val) that also keeps possibilities in sync
     bool
     clear_pval_val(size_t row,size_t col,size_t val);
-    //! Wrapper around square::set_val(val,set_pval) which keeps count in sync
-    void
-    set_val(size_t row,size_t col,size_t val,bool set_pval=true);
     //! purge all vals in set s from the square[row][col]
     bool
     purge_set(size_t row, size_t col, std::set<size_t> s);
@@ -2041,6 +3037,57 @@ private:
     //! returns false if any block does not have 1 through N else true
     bool
     validate_blocks();
+    /*! creates a string representation of a board with set vals being 
+     * themselves, and unknown squares being represented by '.'
+     * our conversion operator std::string() just calls this.
+     */
+    std::string
+    to_string()
+    {
+	std::string retval;
+	std::ostringstream ss(retval);
+
+	for( auto r : b){
+	    for( auto s : r){
+		size_t v=s.get_val();
+		if(v){
+		    ss << v;	
+		} else {
+		    ss << '.';
+		}
+	    }
+	}
+	return ss.str();
+    }
+    /*! helper routine to print symmetry types used when digging
+     * \param os the stream to print to
+     * \param st the symtype value to print
+     */
+    void
+    print_st(std::ostream& os,symtype st)
+    {
+	if(!st){
+	    os << "ST_NONE";
+	}else{
+	    bool first=true;
+	    for(size_t ctr=1;st;ctr++){
+		if(st&1){
+		    if(!first){
+			os << '|';
+		    }
+		    first=false;
+		    os<<symtype_st[ctr];
+		}
+		st=symtype(st>>1);
+	    }
+	}
+    }
+    //! Routine called by our constructors to do common initialization
+    void init();
+    void
+    inline
+    dig_one(size_t row,size_t col, board& brd, symtype st);
+    // private data
     //! This is the actual board data structure
     std::vector<std::vector<square>> b;
     //! Set to square root of N in init()
@@ -2051,8 +3098,10 @@ private:
     bool solved;
     //! incremented by brute_solution each time it must back up. Can be HUGE because we can back up past the same place many times
     size_t backed_count;
-    //! all the solution strategies used by heurist_solution mapped by level
-    std::map<size_t, std::map<std::string, class sudoku_method<N>*>> strategies;
+    //! all the solution strategies used by heuristic_solution mapped by level
+    //std::map<size_t, std::map<std::string, class sudoku_method<N>*>> strategies;
+    //! all the solution strategies used by heuristic_solution sorted
+    std::vector<class sudoku_method<N>*> sorted_strategies;
     //! The class that implements the naked single strategy
     naked_single<N> ns;
     //! The class that implements the hidden single strategy
@@ -2081,16 +3130,15 @@ private:
     jellyfish<N> jf;
     //! The class that implements the xy-chain strategy
     xy_chain<N> cpc;
-    //! Routine called by our constructors to do common initialization
-    void init();
+    //! The class that implements the xy-chain strategy
+    simple_color<N> sc;
     //! map of vals to map of rows to vector of squares in each row with val in pvals
     std::map<size_t,std::map<size_t,std::vector<square*>>> row_possibilities;
     //! map of vals to map of columns to vector of squares in each column with val in pvals
     std::map<size_t,std::map<size_t,std::vector<square*>>> column_possibilities;
     //! map of vals to map of blocks to vector of squares in each block with val in pvals
     std::map<size_t,std::map<size_t,std::vector<square*>>> block_possibilities;
-    //! Count of squares that have been set
-    size_t set_squares;
+    //! suppress_output is just so clear_pval_val() won't spit out any information when we are setting up a board.
     bool suppress_output=false;
 };
 
@@ -2114,14 +3162,17 @@ operator<<(std::ostream& os,typename board<N>::symtype st)
 }
 
 /*!
- * From a given square find all the other squares in the same row, column,
- * or block, and pass them each in turn to the fn argument for vetting.  If
- * the function returns true, then add them to a std::set<square *>.  When
+ * From a given square find all the other squares that share a row, column,
+ * or block with it, and then pass each of those squares in turn to the fn
+ * argument for vetting.
+ * If the function returns true, then add them to a std::set<square *>.  When
  * done, return the set.
  * \param sq a pointer to the square whose neighbors will be inspected and
  * 	potentially returned in the set
  * \param fn a pointer to a square member method that takes a pointer to a
  *      square and returns a bool
+ * \param not_self if true (default) don't include myself in the set of 
+ *      neighbors, else do
  * \return std::set<square*> all the neighbors of sq that caused fn to return
  *      true
  */
@@ -2176,42 +3227,126 @@ board<N>::get_neighbors(square* sq,bool (square::*fn)(square*),bool not_self)
 }
 
 /*!
- * return a representation of the board as a string with each character
- * representing a square of the board with values '1'-'9' to represent set
- * cells, and '0' to represent an unset cell.  The order, left to right is
- * r0c0-8 then r1c0-8, etc...
+ * This routine is called back from the various solution strategies so
+ * \param ssp a pointer to the solution method
  */
 template<const unsigned int N>
-board<N>::operator std::string()
+inline
+void
+board<N>::register_strategy(sudoku_method<N>* ssp)
 {
-    std::string retval="";
-    for(size_t ctr=0;ctr<N*N;ctr++){
-	size_t row=ctr/N, col=ctr%N;
-	retval+='0'+b[row][col].get_val();
+    REGISTER_STRATEGY_DEBUG{
+	std::cerr << "  register_strategy from \"" << ssp->get_name() << "\"\n";
     }
-    return retval;
+    sorted_strategies.push_back(ssp);
 }
 
+//! contact all of the heuristics, give them us, and wake them up
+/*!
+ * This is only called from board<N>::init and is separated here just to 
+ * make it cleaner there;) It passes to each of the heuristics two things, 
+ * a pointer to the board, so that the heuristics can get to routines they
+ * need to find stuff on the board, and the sort order. The heuristics sort
+ * their sort order so that the board doesn't need an extra data structure
+ * to associate the sort order with the heuristic. Why shouldn't they shoulder
+ * that burden? They are already carrying information. They all inherit from
+ * sudoku_method, and actually just pass the burden to her when they construct
+ * her as parent.
+ *
+ * Finally we sort them into the order in which they will be invoked, with
+ * smaller number heuristics always being tried before big number ones (except
+ * that a sort order of zero disables a heuristic).
+ */
 template<const unsigned int N>
+inline
 void
 board<N>::register_strategies(void)
 {
-    hs.register_strategy(this);
-    ns.register_strategy(this);
-    nd.register_strategy(this);
-    hd.register_strategy(this);
-    nt.register_strategy(this);
-    ht.register_strategy(this);
-    nq.register_strategy(this);
-    hq.register_strategy(this);
-    intr.register_strategy(this);
-    xw.register_strategy(this);
-    yw.register_strategy(this);
-    sf.register_strategy(this);
-    jf.register_strategy(this);
-    cpc.register_strategy(this);
+    // here we are giving them a pointer to the board, and telling them
+    // their sort order
+    REGISTER_STRATEGY_DEBUG {
+	std::cout << "asking all of the strategies to register\n";
+    }
+    hs.register_strategy(this,100);
+    ns.register_strategy(this,105);
+    intr.register_strategy(this,110);
+    nd.register_strategy(this,120);
+    hd.register_strategy(this,130);
+    nt.register_strategy(this,140);
+    ht.register_strategy(this,150);
+    nq.register_strategy(this,160);
+    hq.register_strategy(this,170);
+    xw.register_strategy(this,180);
+    yw.register_strategy(this,190);
+    sf.register_strategy(this,200);
+    jf.register_strategy(this,210);
+    cpc.register_strategy(this,220);
+    sc.register_strategy(this,230);
+    sort_strategies();
+    REGISTER_STRATEGY_DEBUG {
+	std::cout << "  sorted strategies after all the registrations:\n";
+	for(auto s : sorted_strategies){
+	    std::cout << "    " << s << "\n";
+	}
+    }
 }
 
+//! set the sort level for a heuristic and resort the invokation order
+/*!
+ * This method allows someone, anyone, who knows, with access to a board
+ * to change the order in which heuristics are invoked, or even to disable
+ * certain heuristics. If you want a heuristic to be invoked early, give it
+ * a low positive non-zero number. Zero disables a heuristic. We start all
+ * with 100+, so you can move things first by giving them sort numbers < 100.
+ * As an example, if you wanted to run hidden variants first for a board for
+ * which you had a pointer b, you could do
+ * something like:
+\code
+    b->set_strategy_sort_level("hidden quad",1);
+    b->set_strategy_sort_level("hidden triple",3);
+    b->set_strategy_sort_level("hidden double",5);
+    b->set_strategy_sort_level("hidden single",7);
+\endcode
+ * \param name the name of a heuristic
+ * \param level the desired new sort level or order of a heuristic
+ * \return bool true if the heuristic existed and we set the sort order, or false if it didn't exist
+ */
+template<const unsigned int N>
+bool
+board<N>::set_strategy_sort_level(std::string name,size_t level)
+{
+    STRATEGY_SORT_LEVEL_DEBUG {
+	std::cout << "set_strategy_sort_level(" << name << "," << level << ")\n";
+    }
+    bool success=false;
+    for(auto s : sorted_strategies){
+	if(s->get_name() == name){
+	    STRATEGY_SORT_LEVEL_DEBUG{
+		std::cout << "  found " << s->get_name()
+		    << ", setting level\n\n";
+	    }
+	    s->set_sort_level(level);
+	    success=true;
+	    break;
+	}
+    }
+    sort_strategies();
+    return success;
+}
+
+/*!
+ * \param what - one of GT_ROW, GT_COLUMN, or GT_BLOCK
+ * \param which - a value 0 through 8 asking for a map for
+ * that particular row/column/block of pvals (1-9) to vectors of squares
+ * 
+ * \return a reference to a map of pvals (possible values) to vector<square*>
+ * in which each of the possible values 1-9 is mapped to a vector of squares
+ * in a row/column/block containing that possibility in their pvals, for example
+ * mvs=b->get_possibilities(GT_ROW,7) returns us a map for row 7
+ * such that mvs[2] returns us a vector<square*> of all the squares
+ * on row 7 with 2 in their pvals (possible values). Since they are returned
+ * by reference there are no copies made.
+ */
 template<const unsigned int N>
 inline
 std::map<size_t,std::vector<square*>>&
@@ -2234,18 +3369,25 @@ board<N>::get_possibilities(grouptype what,size_t which)
 template<const unsigned int N>
 inline
 std::vector<square*>
-board<N>::get_squares(grouptype what,size_t which)
+board<N>::get_squares(grouptype what,size_t which,size_t depth,size_t min)
 {
     std::vector<square*> retval;
+    size_t size;
     switch(what){
 	case GT_ROW:
 	    for(size_t col=0;col<N;col++){
-		retval.push_back(&b[which][col]);
+		size=b[which][col].size();
+		if(size>=min && size<=depth){
+		    retval.push_back(&b[which][col]);
+		}
 	    }
 	    break;
 	case GT_COLUMN:
 	    for(size_t row=0;row<N;row++){
-		retval.push_back(&b[row][which]);
+		size=b[row][which].size();
+		if(size>=min && size<=depth){
+		    retval.push_back(&b[row][which]);
+		}
 	    }
 	    break;
 	case GT_BLOCK:
@@ -2255,7 +3397,10 @@ board<N>::get_squares(grouptype what,size_t which)
 		   col_max=col_min+root;
 	    for(size_t row=row_min;row<row_max;row++){
 		for(size_t col=col_min;col<col_max;col++){
-		    retval.push_back(&b[row][col]);
+		    size=b[row][col].size();
+		    if(size>=min && size<=depth){
+			retval.push_back(&b[row][col]);
+		    }
 		}
 	    }
 	    break;
@@ -2287,21 +3432,15 @@ board<N>::get_squares(grouptype what,size_t which)
  * leave a naked double, a hidden quad leaves a naked triple, etc...
  * N.B. this routine is an unrolled recursive routine
  * \param depth How many we need to make a group, we only use 2, 3, or 4 for hidden double, triple, or quad.
- * \param possibilities from some particular row, column, or block, this is a map of pval values, 1-N to vectors of pointers to squares in that row, column or block that contain that number in their pvals.
+ * \param gt one of GT_ROW, GT_COLUMN, or GT_BLOCK
+ * \param which the row, column, or block number
  * \return bool true if we found what we were looking for and as a result made some change in some square's pvals.  If we find a hidden whatever, but no pval values get cleared, or if we don't find a hidden whatever, we return false.
  *
  */
 template<const unsigned int N>
 bool
-#if defined(SHOW_RESPATH)
-board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& possibilities,grouptype gt)
-#else
-board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& possibilities)
-#endif
+board<N>::discern_hidden(size_t depth, grouptype gt, size_t which)
 {
-    // at this point we should have pointers to all the squares with the value
-    // 1 in their list of possible values in a vector mapped to 1 etc.  This
-    // information is for only one row, one column, or one block
     std::vector<size_t> vals; // walks through all vals 1-N
     std::vector<size_t> sizes;
     std::vector<std::set<square*>> sets;
@@ -2312,242 +3451,293 @@ board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& po
     sizes.resize(depth);
 
     std::map<size_t,square::matched_type> matched_map={
-	{2,square::AM_HIDDEN_DOUBLE},
-	{3,square::AM_HIDDEN_TRIPLE},
-	{4,square::AM_HIDDEN_QUAD}
+	{2,square::matched_type::AM_HIDDEN_DOUBLE},
+	{3,square::matched_type::AM_HIDDEN_TRIPLE},
+	{4,square::matched_type::AM_HIDDEN_QUAD}
     };
-
-    DISCERN_HIDDEN_DEBUG std::cerr << "DISCERN_HIDDEN--depth: " << depth << "\n";
-    size_t d=0;
-    vals[0]=1;
+    std::map<size_t,std::string> matched_names={
+	{2,"hidden double"},
+	{3,"hidden triple"},
+	{4,"hidden quad"}
+    };
+    std::map<size_t,std::vector<square*>>&
+	possibilities = get_possibilities(gt,which);
+    std::vector<size_t> candidate_vals;
+    DISCERN_HIDDEN_DEBUG{
+	std::cerr << "discern_hidden(depth: " << depth << " (" << matched_names[depth]
+	    << "), grouptype: " << grouptype_names[gt] << ", which: " 
+	    << which << ")\n\n"
+	    << "  checking for vals with [2, " << depth << "] "
+	       "candidate squares with the val in their pvals\n";
+    }
+    for(size_t cand=1;cand<=N;cand++){
+	size_t sz=possibilities[cand].size();
+	DISCERN_HIDDEN_DEBUG{
+	    std::cerr << "    " << cand
+		<< " – " << sz
+	        << " squares have " << cand << " in their pvals";
+	}
+	if(sz>=2 && sz<=depth){
+	    DISCERN_HIDDEN_DEBUG std::cerr << " — pushing on candidate_vals";
+	    candidate_vals.push_back(cand);
+	}
+	DISCERN_HIDDEN_DEBUG std::cerr << '\n';
+    }
+    size_t the_size=candidate_vals.size();
+    DISCERN_HIDDEN_DEBUG{
+	std::cerr << "  there are " << the_size << " candidates\n";
+    }
+    if(the_size < depth){
+	DISCERN_HIDDEN_DEBUG{
+	    std::cerr << "    that's not enough for a " << matched_names[depth]
+		<< ", so taking a quick exit, return false\n\n";
+	}
+	return false;
+    }
+    std::vector<size_t> slots; // indices into vector of candidate valse;
+    for(size_t i=0;i<depth;i++){
+	// set to look at the first depth vals first
+	slots.push_back(i);
+    }
+    size_t tomod=depth-1;	// start by looking at last slot
+    DISCERN_HIDDEN_DEBUG std::cerr << '\n';
     while(true){
-	DISCERN_HIDDEN_DEBUG std::cerr << "TOP OF LOOP--d: " << d << ", val: " << vals[d] << "\n";
-
-	// vals[d] will count from 1-N, so to start, the next line will get a
-	// vector of pointers to all squares with a 1 in their pvals
-	std::vector<square *>& vs=possibilities[vals[d]];  // convenience
-	sizes[d]=vs.size();	// how many squares have that val
-
-	DISCERN_HIDDEN_DEBUG std::cerr << "  possibilities[" << vals[d] << "].size(): " << sizes[d] << "\n";
-
-	if(sizes[d]>=2 && sizes[d]<=depth){
-	    // if 2 to N squares have this value in their pvals
-	    DISCERN_HIDDEN_DEBUG std::cerr << "found a candidate\n";
-	    		
-	    if(d>0){
-		// remember the squares from the previous level if any
-		sets[d]=sets[d-1];
+	DISCERN_HIDDEN_DEBUG{
+	    std::cerr << "top of main loop\n";
+	    std::cerr << "  slots:   ";
+	    for(auto slot : slots){
+		std::cerr << ' ' << slot;
 	    }
-	    for(size_t ctr=0;ctr<sizes[d];ctr++){
-		// add to it the squares from this level in the hopes that
-		// when we get to the ultimate depth, we will have found a
-		// group of size depth of squares.
-		sets[d].insert(possibilities[vals[d]][ctr]);
-		DISCERN_HIDDEN_DEBUG std::cerr << "adding sq: " << *possibilities[vals[d]][ctr] << " to sets[" << d << "]\n";
+	    std::cerr << '\n';
+	    std::cerr << "          ";
+	    for(size_t i=0;i<depth;i++){
+		std::cerr << "  ";
 	    }
-	    DISCERN_HIDDEN_DEBUG std::cerr << "size of sets[" << d << "]: " << sets[d].size() << "\n";
-	    if(d==depth-1){
-		// d==depth-1 is our maximum depth, i.e. if depth is four, we
-		// go through d=0, d=1, d=2, d=3
-		DISCERN_HIDDEN_DEBUG std::cerr << "d==depth-1\n";
-		DISCERN_HIDDEN_DEBUG std::cerr << "sets[d].size(): " << sets[d].size() << '\n';
-		if(sets[d].size()==depth){ 
-		    // if depth is four and we found four squares, might be it!
-		    DISCERN_HIDDEN_DEBUG std::cerr << "d: " << d << ", maybe found?\n";
-		    bool already_found=true;
-		    bool found_hidden=false;
-		    std::set<square*>::iterator it;
-		    std::set<size_t> valset;
-		    // check to see if all of the squares are already marked
-		    // as hidden double or triple or quad as appropriate.  If
-		    // so, we'll not consider this a win.
-		    for(it=sets[d].begin();it!=sets[d].end();it++){
-			DISCERN_HIDDEN_DEBUG std::cerr << " checking square against matched_map[" << d << "]: " << (*it)->mt2string(matched_map[depth]) << "--" << **it << '\n';
-			if(!(*it)->check_matched_type(matched_map[depth])){
-			    already_found=false;
-			}
-		    }
-		    if(!already_found){
-			// maybe found hidden.  Check to see if at least one square
-			// has any val in pval other than the ones our vals.
-			DISCERN_HIDDEN_DEBUG std::cerr << "valset={";
-
-			for(size_t vc=0;vc<depth;vc++){
-			    // vals[0] is the val for which we found 2-depth-1
-			    // squares, vals[1] is another, etc...
-			    valset.insert(vals[vc]);
-			    DISCERN_HIDDEN_DEBUG std::cerr << vals[vc] << ",";
-			}
-			// Now we've got a list of the vals for which at each
-			// depth, we've found 2-depth-1 squares with that val
-			DISCERN_HIDDEN_DEBUG std::cerr << "}\n";
-
-			for(it=sets[d].begin();it!=sets[d].end();it++){
-			    for(size_t ctr=0;ctr<(*it)->size();ctr++){
-				DISCERN_HIDDEN_DEBUG std::cerr << "checking for (*it)[ctr]: " << (**it)[ctr] << " in valset\n";
-				if(std::find(valset.begin(),valset.end(),(**it)[ctr])==valset.end()){
-				    DISCERN_HIDDEN_DEBUG std::cerr << "found an element not in the set of vals, so setting found_hidden true.\n";
-				    found_hidden=true;
-				    break;
-				}
-			    }
-			    if(found_hidden){
-				break;
-			    }
-			}
-		    }
-		    if(found_hidden && !already_found){
-
-			DISCERN_HIDDEN_DEBUG std::cerr << "found a hidden " << depth << "\n";
-			RESPATH{
-			    std::cerr << "hidden-";
-			    switch(depth){
-				case 2:
-				    std::cerr << "pairs";
-				    break;
-				case 3:
-				    std::cerr << "triples";
-				    break;
-				case 4:
-				    std::cerr << "quads";
-				    break;
-			    }
-			    std::cerr << "-in-a-";
-#if defined(SHOW_RESPATH)
-			    switch(gt){
-				case GT_ROW:
-				    std::cerr << "row";
-				    break;
-				case GT_COLUMN:
-				    std::cerr << "column";
-				    break;
-				case GT_BLOCK:
-				    std::cerr << "block";
-				    break;
-			    }
-#endif
-			    std::cerr << " {";
-			    std::set<size_t>::iterator it;
-			    bool first_time=true;
-			    for(it=valset.begin();it!=valset.end();it++){
-				if(!first_time){
-				    std::cerr << ' ';
-				}
-				first_time=false;
-				std::cerr << "n" << *it;
-			    }
-			    std::cerr << "}";
-			    std::set<square *>::iterator sit;
-#if defined(SHOW_RESPATH)
-			    switch(gt){
-				case GT_ROW:
-				    std::cerr << "r" << (*(sets[d].begin()))->get_row()+1;
-				    std::cerr << "{";
-				    first_time=true;
-				    for(sit=sets[d].begin();sit!=sets[d].end();sit++){
-					if(!first_time){
-					    std::cerr << ' ';
-					}
-					std::cerr << "c" << (*sit)->get_column()+1;
-				    }
-				    std::cerr << '}';
-				    break;
-				case GT_COLUMN:
-				    std::cerr << "{";
-				    first_time=true;
-				    for(sit=sets[d].begin();sit!=sets[d].end();sit++){
-					if(!first_time){
-					    std::cerr << ' ';
-					}
-					std::cout << "r" << (*sit)->get_row()+1;
-				    }
-				    std::cerr << "}c" << (*(sets[d].begin()))->get_column()+1;
-				    break;
-				case GT_BLOCK:
-				    std::cerr << "{";
-				    first_time=true;
-				    for(sit=sets[d].begin();sit!=sets[d].end();sit++){
-					if(!first_time){
-					    std::cerr << ' ';
-					}
-					first_time=false;
-					std::cerr << "r" << (*sit)->get_row()+1 << "c" << (*sit)->get_column()+1;
-				    }
-				    std::cerr << "}";
-			    }
-#endif
-			}
-			// get rid of any thing not in set of vals, i.e. turns
-			// a hidden triple to a naked triple.
-			reduce_to_set(sets[d],valset);
-			RESPATH std::cerr << '\n';
-			// you'd think that this next call, to purge_from_set
-			// which will get rid of the vals in the hidden N from
-			// the appropriate row, column, and block, would be
-			// unneccessary, since hidden, means nothing else in
-			// the group has any of those.  The reason it is still
-			// required is that squares can be a hidden group in a
-			// row, but not in their block, yet, once recognized as
-			// a hidden group, and reduced to a naked N, then we
-			// can use them to purge their shared vals from any
-			// other group they share.  So, they might be the only
-			// squares in a row with 3 and 7 for example, but if
-			// they are also in the same block, we can purge 3 and
-			// 7 from any other squares in the block.  The same 
-			// applies also if they are hidden in a block, if they
-			// are colinear in a row or column, we can purge there.
-			//purge_from_set(sets[d], valset);
-			for(it=sets[d].begin();it!=sets[d].end();it++){
-			    // After being purged they change from a hidden to
-			    // a naked so we set both so we don't find them as
-			    // either since the work is already done.
-			    switch(depth){
-				case 2:
-				    //(*it)->set_matched_type(square::AM_NAKED_DOUBLE);
-				    (*it)->set_matched_type(square::AM_HIDDEN_DOUBLE);
-				    break;
-				case 3:
-				    //(*it)->set_matched_type(square::AM_NAKED_TRIPLE);
-				    (*it)->set_matched_type(square::AM_HIDDEN_TRIPLE);
-				    break;
-				case 4:
-				    //(*it)->set_matched_type(square::AM_NAKED_QUAD);
-				    (*it)->set_matched_type(square::AM_HIDDEN_QUAD);
-				    break;
-			    }
-			}
-			return true;
-		    }else{
-			DISCERN_HIDDEN_DEBUG std::cerr << " nope!  None had more than d pvals so they weren't hidden\n";
-		    }
-		}else{
-		    DISCERN_HIDDEN_DEBUG std::cerr << "sets[d].size()!=depth (squares didn't match up, so sets[d].size() is " << sets[d].size() << ")\n";
-		}
-	    }else{ // if(d==depth-1){}
-		DISCERN_HIDDEN_DEBUG std::cerr << "d!=depth-1\n";
-		// we aren't at max depth, so we set up for the next depth
-		DISCERN_HIDDEN_DEBUG std::cerr << "bumping up d because it is not depth-1, but rather: " << d << "\n";
-
-		++d;
-		vals[d]=vals[d-1]; // start our loop counter at the next val
-		if(d==depth){
-		    // didn't find it
-		    return false;
-		}
-	    }// if(d==depth-1){} else{}
-	} // if(sizes[d]>=2 && sizes[d]<=depth){} 
-	while(++vals[d]==(N+1)){ // bump up vals and if done deal with it
-	    DISCERN_HIDDEN_DEBUG std::cerr << "end of val loop for d==" << d << ", vals[d]: " << vals[d] << '\n';
-	    if(d==0){
-		DISCERN_HIDDEN_DEBUG std::cerr << "returning false\n";
-		return false;
-	    }else{
-		d--;
-		sets[d].clear();
-		DISCERN_HIDDEN_DEBUG std::cerr << "backing up to level: " << d << "\n";
+	    std::cerr << "^\n";
+	}
+	// check for hidden depth
+	std::set<square*> test_vals;
+	for(size_t slot : slots){
+	    for(square* s : possibilities[candidate_vals[slot]]){
+		test_vals.insert(s);
 	    }
 	}
-    } // while(true)
+	if(test_vals.size()==depth){
+	    bool real_hidden=false;
+	    for(square* sq : test_vals){
+		// bad test. we can be <= depth and still have a pval not in
+		// candidate_vals
+		DISCERN_HIDDEN_DEBUG std::cerr << "    " << *sq;
+		if(sq->size() > depth){
+		    real_hidden=true;
+		    DISCERN_HIDDEN_DEBUG std::cerr << "      size " << sq->size() << " is greater than depth: " << depth << '\n';
+		}
+	    }
+	    if(real_hidden){
+		// found a hidden variant
+		DISCERN_HIDDEN_DEBUG std::cerr << "hidden!!!!\n";
+		// first!  We have to see if this exact set of squares has
+		// already been found.
+		// set_applied_set
+		bool applied_sets=true;
+		for(auto sq : test_vals){
+		    if(!sq->set_applied_set(matched_map[depth],test_vals)){
+			applied_sets=false;
+			break;
+		    }
+		}
+		if(applied_sets){
+		    // here we know that we hadn't already found them
+		    // now purge extra pvals
+		    // std::vector<size_t> candidate_vals;
+		    // anything that ISN'T in candidate_vals has to be removed 
+		    // from std::set<square*> test_vals;
+		    DISCERN_HIDDEN_DEBUG std::cerr << "not already found\n";
+		    DISCERN_HIDDEN_DEBUG{
+			std::cerr << "  what do you know! found it!\n";
+			for(square* sq : test_vals){
+			    std::cerr << "    " << *sq;
+			}
+			std::cerr << "    vals are";
+			for(size_t slot : slots){
+			    std::cerr << " " << candidate_vals[slot];
+			}
+			std::cerr << '\n';
+		    }
+		    std::set<size_t> the_vals;
+		    for(size_t slot: slots){
+			the_vals.insert(candidate_vals[slot]);
+		    }
+		    RESPATH{
+			std::cerr << "hidden-";
+			switch(depth){
+			    case 2:
+				std::cerr << "pairs";
+				break;
+			    case 3:
+				std::cerr << "triples";
+				break;
+			    case 4:
+				std::cerr << "quads";
+				break;
+			}
+			std::cerr << "-in-a-" << grouptype_2_name[gt];
+			std::cerr << " {";
+			std::set<size_t>::iterator it;
+			bool first_time=true;
+			for(it=the_vals.begin();it!=the_vals.end();it++){
+			    if(!first_time){
+				std::cerr << ' ';
+			    }
+			    first_time=false;
+			    std::cerr << "n" << *it;
+			}
+			std::cerr << "}";
+			std::set<square *>::iterator sit;
+#if defined(SHOW_RESPATH)
+			switch(gt){
+			    case GT_ROW:
+				std::cerr << "r" << (*(test_vals.begin()))->get_row()+1;
+				std::cerr << "{";
+				first_time=true;
+				for(sit=test_vals.begin();sit!=test_vals.end();sit++){
+				    if(!first_time){
+					std::cerr << ' ';
+				    }
+				    std::cerr << "c" << (*sit)->get_column()+1;
+				}
+				std::cerr << '}';
+				break;
+			    case GT_COLUMN:
+				std::cerr << "{";
+				first_time=true;
+				for(sit=test_vals.begin();sit!=test_vals.end();sit++){
+				    if(!first_time){
+					std::cerr << ' ';
+				    }
+				    std::cout << "r" << (*sit)->get_row()+1;
+				}
+				std::cerr << "}c" << (*(test_vals.begin()))->get_column()+1;
+				break;
+			    case GT_BLOCK:
+				std::cerr << "{";
+				first_time=true;
+				for(sit=test_vals.begin();sit!=test_vals.end();sit++){
+				    if(!first_time){
+					std::cerr << ' ';
+				    }
+				    first_time=false;
+				    std::cerr << "r" << (*sit)->get_row()+1 << "c" << (*sit)->get_column()+1;
+				}
+				std::cerr << "}";
+			}
+#endif
+		    }
+		    // get rid of any thing not in set of vals, i.e. turns
+		    // a hidden triple to a naked triple.
+		    reduce_to_set(test_vals,the_vals);
+		    RESPATH std::cerr << '\n';
+		    return true;
+		}else{
+		    // here we know we already found this one
+		    DISCERN_HIDDEN_DEBUG std::cerr << "already found\n";
+		}
+	    }else{
+		// Found a naked variant but we won't do anything about it
+		// it will be found and counted as a nekkid variant in
+		// discern_naked.
+		// This is a hard choice. We know what is going on right
+		// now and could claim this.  The work is already done.
+		// The only reason I don't is because if I start shooting
+		// from the hip like that, instead of dealing with each thing
+		// in its place I will surely create weird bugs. It's a
+		// tradeoff between efficiency and maintainability. The 
+		// small increase in efficiency is not worth the hit in
+		// maintainability to me.
+		DISCERN_HIDDEN_DEBUG std::cerr << "nekkid!!!!\n";
+	    }
+	}else{
+
+	    // didn't succeed, fix it;
+	    DISCERN_HIDDEN_DEBUG std::cerr << "    Nope. There are " << test_vals.size() << " squares that share the pval\n";
+	}
+	DISCERN_HIDDEN_DEBUG{
+	    std::cerr << "  Didn't find a " << matched_names[depth]
+		<< " bumping up the slots\n"
+		<< "  checking for slots[tomod]: " << slots[tomod]
+		<< " == the_size-1: " << the_size-1 << " (number of candidates)\n"
+		<< "    (which would mean that we are at the end of the internal loop)\n";
+	}
+	if(slots[tomod] == the_size-1){
+	    DISCERN_HIDDEN_DEBUG std::cerr << "  yes, end of internal loop\n";
+	    ssize_t tmptomod=tomod-1;
+	    DISCERN_HIDDEN_DEBUG{
+		std::cerr << "    backing tmptomod: "
+			<< "  " << std::setw(2) << tmptomod << '\n';
+	    }
+	    while(tmptomod>=0 && slots[tmptomod]==slots[tmptomod+1]-1){
+		DISCERN_HIDDEN_DEBUG std::cout << "    backing tmptomod: ";
+		--tmptomod;
+		DISCERN_HIDDEN_DEBUG std::cout << "  " << std::setw(2) << tmptomod << '\n';
+	    }
+	    DISCERN_HIDDEN_DEBUG{
+		std::cerr << "    slot #   -1 0 1 2 3\n"
+			  << "    ~~~~~~~~~~~~~~~~~~~\n"
+			  << "    slots   :  ";
+		for( size_t slot : slots){
+		    std::cerr << ' ' << slot;
+		}
+		std::cerr << '\n';
+	    }
+	    
+	    if(tmptomod==-1){
+		DISCERN_HIDDEN_DEBUG{
+		    std::cerr << "              x\n";
+		    std::cerr << "    backed off front, no more, quitting\n";
+		}
+		break;
+	    }else{
+		DISCERN_HIDDEN_DEBUG{
+		    std::cerr << "                ";
+		    for(ssize_t i=0;i<tmptomod;i++){
+			std::cerr << "  ";
+		    }
+		    std::cerr << "^\n";
+		}
+		++slots[tmptomod];
+		for(++tmptomod;tmptomod<static_cast<ssize_t>(depth);++tmptomod){
+		    slots[tmptomod]=slots[tmptomod-1]+1;
+		    DISCERN_HIDDEN_DEBUG{
+			std::cerr << "               ";
+			for( size_t slot : slots){
+			    std::cerr << ' ' << slot;
+			}
+			std::cerr << '\n';
+			std::cerr << "                ";
+			for(ssize_t i=0;i<tmptomod;i++){
+			    std::cerr << "  ";
+			}
+			std::cerr << "^\n";
+		    }
+		}
+	    }
+	}else{
+	    ++slots[tomod];
+	    DISCERN_HIDDEN_DEBUG{
+		std::cerr << "    Just bumped up slots[tomod]"
+		    << ", slots[" << tomod << "] is now: "
+		    << slots[tomod] << '\n';
+	    }
+	}
+	DISCERN_HIDDEN_DEBUG{
+	    std::cerr << "  done with internal loop adjustments\n";
+	    std::cerr << "end of main loop slots are: ";
+	    for(auto slot : slots){
+		std::cerr << ' ' << slot;
+	    }
+	    std::cerr << "\n\n";
+	}
+    }
     return false;
 }
 
@@ -2563,648 +3753,1165 @@ board<N>::discern_hidden(size_t depth, std::map<size_t,std::vector<square*>>& po
  * two squares solved for 2 and 9, and a naked subset on 1,3, and 7, there
  * would be a hidden quad on 4, 5, 6, and 8.
  * \param depth 2 for naked double, 3 for naked triple, or 4 for naked quad
- * \param sqs a vector of all the squares in a particular row, column, or block
+ * \param gt tells us whether to look at rows, columns or blocks
+ * \param which tells us which row column or block to look at
+ * \return bool true if we found a naked double triple or quad and as a result, some pvals were removed from one or more squares
  */
 template<const unsigned int N>
 bool
-#if defined(SHOW_RESPATH)
-board<N>::discern_naked(size_t depth, std::vector<square*> sqs,grouptype gt)
-#else
-board<N>::discern_naked(size_t depth, std::vector<square*> sqs)
-#endif
+board<N>::discern_naked(size_t depth, grouptype gt, size_t which)
 {
-    // at this point we should have pointers to all the squares with the value
-    // 1 in their list of possible values in a vector mapped to 1 etc.
-    std::vector<size_t> ctrs;
-    std::vector<size_t> sizes;
-    std::vector<std::set<size_t>> sets;
-    ctrs.resize(depth);
-    sets.resize(depth);
-    sizes.resize(depth);
     std::map<size_t,square::matched_type> matched_map={
-	{2,square::AM_NAKED_DOUBLE},
-	{3,square::AM_NAKED_TRIPLE},
-	{4,square::AM_NAKED_QUAD}
+	{2,square::matched_type::AM_NAKED_DOUBLE},
+	{3,square::matched_type::AM_NAKED_TRIPLE},
+	{4,square::matched_type::AM_NAKED_QUAD}
     };
-    
-    DISCERN_NAKED_DEBUG std::cerr << "DISCERN_NAKED--depth: " << depth << "\n";
-    size_t d=0;
-    ctrs[0]=0;
-    while(true){
-	DISCERN_NAKED_DEBUG std::cerr << "TOP OF LOOP--d: " << d << ", ctrs[d]: " << ctrs[d] << "\n";
+    std::map<size_t,std::string> matched_names={
+	{2,"naked double"},
+	{3,"naked triple"},
+	{4,"naked quad"}
+    };
+    // fetch only the squares with [2,depth] pvals
+    std::vector<square*> the_squares=get_squares(gt,which,depth);
+    std::vector<size_t> slots;// indices of current candidates into the_squares
+    for(size_t ctr=0;ctr<depth;ctr++){
+	// first default to 0,1...depth-1
+	slots.push_back(ctr);
+    }
+    size_t the_size=the_squares.size(); // how many squares with 2-depth pvals
+    if(the_size < depth){
+	// quick exit if there aren't enough candidates for depth
+	DISCERN_NAKED_DEBUG{
+	    std::cerr << "discern_naked for " << matched_names[depth]
+	        << ", " << the_size
+		<< " candidate square"
+		<< (the_size==1?"":"s")
+		<< " but depth is " << depth
+		<< " return false\n";
+	}
+	return false;
+    }
 
-	size_t sz=sqs[ctrs[d]]->size(); // size() returns #pvals in a square
-	bool already_set=true;
-	for(size_t chk=0;chk<=d;chk++){
-	    // we check that all of the squares have AM_NAKED_DOUBLE or
-	    // TRIPLE or QUAD set because one might be involved with other
-	    // squares in a different group.  If all are set it's much more
-	    // likely that we're looking at the same thing over again.
-	    if(!sqs[ctrs[chk]]->check_matched_type(matched_map[depth])){
-		already_set=false;
+    DISCERN_NAKED_DEBUG{
+	std::cerr << "DISCERN_NAKED--looking for: " << matched_names[depth] << "\n";
+    }
+    size_t tomod=depth-1;	// start by looking at last slot
+    while(true){
+	DISCERN_NAKED_DEBUG{
+	    std::cerr << "top of main loop\n";
+	    std::cerr << "  slots:   ";
+	    for(auto slot : slots){
+		std::cerr << ' ' << slot;
+	    }
+	    std::cerr << '\n';
+	    std::cerr << "          ";
+	    for(size_t i=0;i<depth;i++){
+		std::cerr << "  ";
+	    }
+	    std::cerr << "^\n";
+	}
+	std::set<size_t> test_pvals;
+	// first test for solution by shoving the pvals of the squares
+	// indexed by slot into a set.
+	DISCERN_NAKED_DEBUG{
+	    std::cerr << "  checking all the pvals to see if there"
+		" are exactly depth (" << depth
+		<< ") of them.\n    If so, it is a "
+		<< matched_names[depth] << '\n';
+	}
+	for(size_t slot : slots){
+	    for(size_t ctr=0;ctr<the_squares[slot]->size();ctr++){
+		test_pvals.insert((*the_squares[slot])[ctr]);
 	    }
 	}
-
-	if(!already_set && sz>=2 && sz<=depth){
-	    DISCERN_NAKED_DEBUG std::cerr << "found a candidate\n";
-	    DISCERN_NAKED_DEBUG std::cerr << *sqs[ctrs[d]];
-	    sets[d].clear();
-	    if(d>0){
-		sets[d]=sets[d-1];
+	DISCERN_NAKED_DEBUG{
+	    std::cerr << "    pvals {";
+	    for(size_t val : test_pvals){
+		std::cerr << ' ' << val;
 	    }
-	    for(size_t ctr=0;ctr<sz;ctr++){
-		sets[d].insert((*sqs[ctrs[d]])[ctr]);
-		DISCERN_NAKED_DEBUG std::cerr << "adding val: " << (*sqs[ctrs[d]])[ctr] << " to sets[" << d << "]\n";
+	    std::cerr << " }\n";
+	}
+	// a naked double will have 2 pvals, triple 3, and quad 4
+	if(test_pvals.size() == depth){
+	    DISCERN_NAKED_DEBUG{
+		std::cerr << "  found a " << matched_names[depth] << '\n';
+		for(size_t slot : slots){
+		    std::cerr << "    "
+			<< print_sq_rcp(the_squares[slot]) << '\n';
+		}
 	    }
-	    DISCERN_NAKED_DEBUG std::cerr << "size of sets[" << d << "]: " << sets[d].size() << "\n";
-	    if(d==depth-1){
-		DISCERN_NAKED_DEBUG std::cerr << "d==depth-1\n";
-		if(sets[d].size()==depth){ 
-		    // found naked.
-		    // make the set of square *s we'll use for purge_from_set()
-		    // and to mark the squares as being already used for
-		    // NAKED N
-		    std::set<square*> sq_set;
-		    for(size_t ctr=0;ctr<depth;ctr++){
-			sq_set.insert(sqs[ctrs[ctr]]);
+	    // found naked.
+	    // make the set of square *s we'll use for purge_from_set()
+	    // and to mark the squares as being already used for
+	    // NAKED N
+	    std::set<square*> sq_set;
+	    for(size_t slot : slots){
+		sq_set.insert(the_squares[slot]);
+	    }
+	    bool applied_sets=true;
+	    for(auto sq : sq_set){
+		if(!sq->set_applied_set(matched_map[depth],sq_set)){
+		    applied_sets=false;
+		    break;
+		}
+	    }
+	    if(applied_sets){
+		RESPATH {
+		    std::cerr << "naked-";
+		    switch(depth){
+			case 2:
+			    std::cerr << "pairs";
+			    break;
+			case 3:
+			    std::cerr << "triples";
+			    break;
+			case 4:
+			    std::cerr << "quads";
+			    break;
 		    }
+		    std::cerr << "-in-a-" << grouptype_2_name[gt];
+		    std::cerr << " {";
+		    std::set<size_t>::iterator it;
+		    bool first_time=true;
+		    for(it=test_pvals.begin();it!=test_pvals.end();it++){
+			if(!first_time){
+			    std::cerr << ' ';
+			}
+			first_time=false;
+			std::cerr << "n" << *it;
+		    }
+		    std::cerr << "}";
 
-		    DISCERN_NAKED_DEBUG std::cerr << "found a naked " << depth << "\n";
-		    RESPATH {
-			std::cerr << "naked-";
-			switch(depth){
-			    case 2:
-				std::cerr << "pairs";
-				break;
-			    case 3:
-				std::cerr << "triples";
-				break;
-			    case 4:
-				std::cerr << "quads";
-				break;
-			}
-			std::cerr << "-in-a-";
 #if defined(SHOW_RESPATH)
-			switch(gt){
-			    case GT_ROW:
-				std::cerr << "row";
-				break;
-			    case GT_COLUMN:
-				std::cerr << "column";
-				break;
-			    case GT_BLOCK:
-				std::cerr << "block";
-				break;
-			}
-#endif
-			std::cerr << " {";
-			std::set<size_t>::iterator it;
-			bool first_time=true;
-			for(it=sets[d].begin();it!=sets[d].end();it++){
-			    if(!first_time){
-				std::cerr << ' ';
+		    switch(gt){
+			case GT_ROW:
+			    {
+			    std::set<square*>::iterator it;
+			    std::cerr << "r" << (*sq_set.begin())->get_row()+1 << "{";
+			    bool first_time=true;
+			    for(it=sq_set.begin();it!=sq_set.end();it++){
+				if(!first_time){
+				    std::cerr << ' ';
+				}
+				first_time=false;
+				std::cerr << "c" << (*it)->get_column()+1;
 			    }
-			    first_time=false;
-			    std::cerr << "n" << *it;
-			}
-			std::cerr << "}";
-
-#if defined(SHOW_RESPATH)
-			switch(gt){
-			    case GT_ROW:
-				{
+			    std::cerr << "}";
+			    }
+			    break;
+			case GT_COLUMN:
+			    {
+				std::cerr << '{';
 				std::set<square*>::iterator it;
-				std::cerr << "r" << (*sq_set.begin())->get_row()+1 << "{";
 				bool first_time=true;
 				for(it=sq_set.begin();it!=sq_set.end();it++){
 				    if(!first_time){
 					std::cerr << ' ';
 				    }
 				    first_time=false;
-				    std::cerr << "c" << (*it)->get_column()+1;
+				    std::cerr << "r" << (*it)->get_row()+1;
+				}
+				std::cerr << "}c" << (*sq_set.begin())->get_column()+1;
+			    }
+
+			    break;
+			case GT_BLOCK:
+			    {
+				std::cerr << '{';
+				std::set<square*>::iterator it;
+				bool first_time=true;
+				for(it=sq_set.begin();it!=sq_set.end();it++){
+				    if(!first_time){
+					std::cerr << ' ';
+				    }
+				    first_time=false;
+				    std::cerr << "r" << (*it)->get_row()+1
+					<< "c" << (*it)->get_column()+1;
 				}
 				std::cerr << "}";
-				}
-				break;
-			    case GT_COLUMN:
-				{
-				    std::cerr << '{';
-				    std::set<square*>::iterator it;
-				    bool first_time=true;
-				    for(it=sq_set.begin();it!=sq_set.end();it++){
-					if(!first_time){
-					    std::cerr << ' ';
-					}
-					first_time=false;
-					std::cerr << "r" << (*it)->get_row()+1;
-				    }
-				    std::cerr << "}c" << (*sq_set.begin())->get_column()+1;
-				}
-
-				break;
-			    case GT_BLOCK:
-				{
-				    std::cerr << '{';
-				    std::set<square*>::iterator it;
-				    bool first_time=true;
-				    for(it=sq_set.begin();it!=sq_set.end();it++){
-					if(!first_time){
-					    std::cerr << ' ';
-					}
-					first_time=false;
-					std::cerr << "r" << (*it)->get_row()+1
-					    << "c" << (*it)->get_column()+1;
-				    }
-				    std::cerr << "}";
-				}
-				break;
-			}
+			    }
+			    break;
+		    }
 #endif
-			std::cerr << " ==>";
-		    }
-		    bool did_something=purge_from_set(sq_set, sets[d]);
-		    RESPATH std::cerr << "\n";
-		    std::set<square*>::iterator it;
-		    for(it=sq_set.begin();it!=sq_set.end();it++){
-			switch(depth){
-			    case 2:
-				(*it)->set_matched_type(square::AM_NAKED_DOUBLE);
-				break;
-			    case 3:
-				(*it)->set_matched_type(square::AM_NAKED_TRIPLE);
-				break;
-			    case 4:
-				(*it)->set_matched_type(square::AM_NAKED_QUAD);
-				break;
-			}
-		    }
-		    return did_something;
+		    std::cerr << " ==>";
 		}
+		bool did_something=purge_from_set(sq_set, test_pvals);
+		RESPATH std::cerr << "\n";
+		DISCERN_NAKED_DEBUG{
+		    std::cerr << "discern naked found something, "
+			  << (did_something?"and cleared some pvals":
+				  "but cleared no pvals")
+			  << ", returning\n";
+		}
+		return did_something;
 	    }else{
-		DISCERN_NAKED_DEBUG std::cerr << "d!=depth-1\n";
-		// we aren't at max depth, so we set up for the next depth
-		DISCERN_NAKED_DEBUG std::cerr << "bumping up d because it is not depth-1, but rather: " << d << "\n";
-
-		++d;
-		ctrs[d]=ctrs[d-1];
-		if(d==depth){
-		    return false;
+		DISCERN_NAKED_DEBUG{
+		std::cerr << "  these squares were already found, skipping\n";
 		}
 	    }
 	}else{
-	    DISCERN_NAKED_DEBUG std::cerr << "square not a candidate: check_matched_type: " << sqs[ctrs[d]]->check_matched_type(matched_map[depth]) << ", size of pvals: " << sz << '\n';
+	    DISCERN_NAKED_DEBUG std::cerr << "    Nope. There are " << test_pvals.size() << " pvals between all the squares.\n";
 	}
-	while(++ctrs[d]==N){ // bump up vals and if done deal with it
-	    DISCERN_NAKED_DEBUG std::cerr << "end of val loop for d==" << d << '\n';
-	    if(d==0){
-		DISCERN_NAKED_DEBUG std::cerr << "returning false\n";
-		return false;
-	    }else{
-		d--;
-		sets[d].clear();
-		DISCERN_NAKED_DEBUG std::cerr << "backing up a level\n";
+	DISCERN_NAKED_DEBUG{
+	    std::cerr << "  Didn't find a " << matched_names[depth]
+		<< " bumping up the slots\n"
+		<< "  checking for slots[tomod]: " << slots[tomod]
+		<< " == the_size-1: " << the_size-1 << " (number of candidates)\n"
+		<< "    (which would mean that we are at the end of the internal loop)\n";
+	}
+	if(slots[tomod] == the_size-1){
+	    DISCERN_NAKED_DEBUG std::cerr << "  yes, end of internal loop\n";
+	    ssize_t tmptomod=tomod-1;
+	    DISCERN_NAKED_DEBUG{
+		std::cerr << "    backing tmptomod: " << std::right
+			<< "  " << std::setw(2) << tmptomod << '\n';
 	    }
+	    while(tmptomod>=0 && slots[tmptomod]==slots[tmptomod+1]-1){
+		--tmptomod;
+		DISCERN_NAKED_DEBUG{
+		    std::cerr << "    backing tmptomod: "
+			    << "  " << std::setw(2) << tmptomod << '\n';
+		}
+	    }
+	    DISCERN_NAKED_DEBUG{
+		std::cerr << "    slot #   -1 0 1 2 3\n"
+			  << "    ~~~~~~~~~~~~~~~~~~~\n"
+			  << "    slots   :  ";
+		for( size_t slot : slots){
+		    std::cerr << ' ' << slot;
+		}
+		std::cerr << '\n';
+	    }
+	    
+	    if(tmptomod==-1){
+		DISCERN_NAKED_DEBUG{
+		    std::cerr << "              x\n";
+		    std::cerr << "    backed off front, no more, quitting\n";
+		}
+		break;
+	    }else{
+		DISCERN_NAKED_DEBUG{
+		    std::cerr << "                ";
+		    for(ssize_t i=0;i<tmptomod;i++){
+			std::cerr << "  ";
+		    }
+		    std::cerr << "^\n";
+		}
+		++slots[tmptomod];
+		for(++tmptomod;tmptomod<static_cast<ssize_t>(depth);++tmptomod){
+		    slots[tmptomod]=slots[tmptomod-1]+1;
+		    DISCERN_NAKED_DEBUG{
+			std::cerr << "               ";
+			for( size_t slot : slots){
+			    std::cerr << ' ' << slot;
+			}
+			std::cerr << '\n';
+			std::cerr << "                ";
+			for(ssize_t i=0;i<tmptomod;i++){
+			    std::cerr << "  ";
+			}
+			std::cerr << "^\n";
+		    }
+		}
+	    }
+	}else{
+	    ++slots[tomod];
+	    DISCERN_NAKED_DEBUG{
+		std::cerr << "    Just bumped up slots[tomod]"
+		    << ", slots[" << tomod << "] is now: "
+		    << slots[tomod] << '\n';
+	    }
+	}
+	DISCERN_NAKED_DEBUG{
+	    std::cerr << "  done with internal loop adjustments\n";
+	    std::cerr << "end of main loop slots are: ";
+	    for(auto slot : slots){
+		std::cerr << ' ' << slot;
+	    }
+	    std::cerr << "\n\n";
 	}
     }
     return false;
 }
 
+//! discern_intersection is called by intersection apply to find intersections
+/*!
+ * discern_intersection looks for one of
+ * row-block-intersection, column-block-intersection,
+ * block-row-intersection, block-column-intersection
+ * For block-column-intersection, primary will be GT_BLOCK, and secondary
+ * will be GT_COLUMN. which refers to the primary, i.e. if the primary is
+ * GT_ROW, which tells us which row we're looking at. 
+ * For each possible pval, [1,9], we look in which for pvals which only
+ * have two or three occuring in primary[which]. For those we find, we
+ * check to see if they also all occur in the secondary, i.e. if
+ * primary == GT_COLUMN, which == 7, and secondary == GT_BLOCK we look
+ * through column 7 for each possible pval and if there are two or three
+ * we then check to see if they also share a block. If so, we have found
+ * our intersection.
+ * \param primary One of GT_BLOCK, GT_ROW, or GT_COLUMN
+ * \param which which instance of block row or column, i.e. it would be a row number
+ * \param secondary One of GT_BLOCK, GT_ROW, or GT_COLUMN. N.B. a primary
+ * 			of GT_BLOCK must have one of GT_ROW or GT_COLUMN as
+ * 			secondary. A primary of GT_ROW or GT_COLUMN must
+ * 			have GT_BLOCK as secondary.
+ * \return count of found intersection that caused pvals to be 
+ *              cleared somewhere on the board
+ */
+template<const unsigned int N>
+size_t
+board<N>::discern_intersection(grouptype primary,size_t which, grouptype secondary)
+{
+    size_t count=0;
+    struct gt_info{
+	std::string name;
+	std::string shortname;
+    };
+    std::map<grouptype,gt_info> gts {
+	{GT_ROW, { "row","r" }},
+	{GT_COLUMN, { "column","c" }},
+	{GT_BLOCK, { "block", "b" }}
+    };
+    DISCERN_INTERSECTION_DEBUG{
+	std::cerr << "  " << gts[primary].name << ": " << which << " - "
+	<< gts[secondary].name << "\n";
+    }
+    // row val vector
+    //  0   1  { sq1, sq2, ... }
+    //      2  { sq1, sq2, ... }
+    //      .
+    //      .
+    //      . 
+    //      9  { sq1, sq2, ... }
+    //
+    //        mvs is all this, a map from all the vals to vectors of 
+    //       ________/\_______    pointers to squares that hold that
+    //      /                 \   val in their pvals. They will all
+    //  1   1  { sq1, sq2, ... }  already be on the same row (or
+    //      2  { sq1, sq2, ... }  column or block)
+    //      .
+    //      .
+    //      .
+    //      9  { sq1, sq2, ... }
+    //          \_____  ______/
+    //                \/
+    //              sqs (below) is just this, the vector for one
+    //              row(or column or block), and one val
+    //              .
+    //              .
+    //              .
+    // 8    9  { sq1, sq2, ...}
+
+    // for one row (or column or block) mvs is a map from the 9
+    // possible values, to 9 vectors of pointers to squares for 
+    // the squares that contain that val in their pvals. 
+    // N.B. if a square on row 1 contains the pvals {3,7,9}, a
+    // pointer to it will be in three of the map entries for
+    // row one, the map from 3, the map from 7 and the map from 9.
+    // For example
+    // mvs=b->get_possibilities(GT_ROW,7) returns us a map for row 7
+    // mvs[2] returns us a vector<square*> of all the squares
+    // on row 7 with 2 in their pvals (possible values). Since we
+    // are looking for possible values that only occur in two or
+    // three cells so we can check to see if they are in the same
+    // block, we can conveniently ask the size of the vector for all
+    // the squares that have 2 in their pvals, so that if
+    // mvs[2].size() is two or three we know to investigate further
+
+    std::map<size_t,std::vector<square*>>& mvs=
+				    get_possibilities(primary,which);
+    // now we have the map for the given row, and will walk through
+    // all of the values to see the number of squares with that value
+    // in their pvals
+    for(size_t val=1;val<N+1;val++){
+	DISCERN_INTERSECTION_DEBUG std::cerr << "    pval: " << val;
+	// walk through each val in turn
+	size_t sz=mvs[val].size(); // squares on row with val in pvals
+	if(sz==2 || sz==3){
+	    // two or three might be an intersection if they are
+	    // all in the same block
+	    std::vector<square*>& sqs=mvs[val]; // convenience
+	    // a pair or triple on a row, if all in same block, can
+	    // purge that value from other squares in the block
+	    DISCERN_INTERSECTION_DEBUG{
+		std::cerr << " - " << sz << " squares have the same "
+		    << gts[primary].name << " and pval " << val << "\n";
+		for( auto sq : sqs){
+		    std::cerr << "      "
+			<< print_sq_rcp(sq) << '\n';
+		}
+	    }
+	    bool foundit=true;
+	    size_t whichnum=0;
+	    switch(secondary){
+		case GT_BLOCK: // for row-block or column-block
+		    whichnum=get_block_num(sqs[0]);
+		    for(size_t ctr=1;ctr<sz;ctr++){
+			if(get_block_num(sqs[ctr])!=whichnum){
+			    foundit=false;
+			    DISCERN_INTERSECTION_DEBUG{
+				std::cerr << "        not same " << gts[secondary].name << ", no intersection\n";
+			    }
+			    break; // break out of for, no point now
+			}
+		    }
+		    break;
+		case GT_ROW:
+		    whichnum=sqs[0]->get_row();
+		    foundit=true;
+		    for(size_t ctr=1;ctr<sz;ctr++){
+			if(sqs[ctr]->get_row()!=whichnum){
+			    foundit=false;
+			    DISCERN_INTERSECTION_DEBUG{
+				std::cerr << "        not same " << gts[secondary].name << ", no intersection\n";
+			    }
+			    break;
+			}
+		    }
+		    break;
+		case GT_COLUMN:
+		    whichnum=sqs[0]->get_column();
+		    foundit=true;
+		    for(size_t ctr=1;ctr<sz;ctr++){
+			if(sqs[ctr]->get_column()!=whichnum){
+			    foundit=false;
+			    DISCERN_INTERSECTION_DEBUG{
+				std::cerr << "        not same " << gts[secondary].name << ", no intersection\n";
+			    }
+			    break;
+			}
+		    }
+		    break;
+	    }
+	    if(foundit){
+		DISCERN_INTERSECTION_DEBUG{
+		    std::cerr << "        found intersection on "
+			<< gts[primary].name << " "
+			<< which << ", "
+			<< gts[secondary].name << " " << whichnum << " for pval " << val << "\n";
+		}
+		//set_applied_intersection returns false for already there
+		bool already_set=false;
+		for(auto sq : sqs){
+		    if(primary==GT_ROW || secondary==GT_ROW){
+			if(!sq->set_applied_intersection(square::matched_type::AM_ROW_BLOCK_INTERSECTION,val,sqs)){
+			    already_set=true;
+			    break;
+			};
+			if(!sq->set_applied_intersection(square::matched_type::AM_BLOCK_ROW_INTERSECTION,val,sqs)){
+			    already_set=true;
+			    break;
+			};
+		    }else if(primary==GT_COLUMN || secondary==GT_COLUMN){
+			if(!sq->set_applied_intersection(square::matched_type::AM_COLUMN_BLOCK_INTERSECTION,val,sqs)){
+			    already_set=true;
+			    break;
+			};
+			if(!sq->set_applied_intersection(square::matched_type::AM_BLOCK_COLUMN_INTERSECTION,val,sqs)){
+			    already_set=true;
+			    break;
+			};
+		    }
+		}
+		if(!already_set){
+		    bool did_something=false;
+		    RESPATH{
+			std::cerr << gts[primary].name << "-"
+			    << gts[secondary].name << "-intersection"
+			    << " " << gts[primary].shortname << which+1
+			    << " " << gts[secondary].shortname << whichnum+1;
+		    }
+		    switch(secondary){
+			case GT_BLOCK:
+			    did_something=purge_block_except(whichnum, sqs,val);
+			    break;
+			case GT_ROW:
+			    did_something=purge_row_except(whichnum,sqs,val);
+			    break;
+			case GT_COLUMN:
+			    did_something=purge_column_except(whichnum,sqs,val);
+			    break;
+		    }
+		    RESPATH std::cerr << "\n";
+		    if(did_something){
+			count++;
+			DISCERN_INTERSECTION_DEBUG{
+			    std::cerr << "          "
+			    << gts[primary].name
+			    << " v block intersection cleared pvals, bumping count\n";
+			}
+		    }else{
+			DISCERN_INTERSECTION_DEBUG std::cerr << "          didn't clear any pvals continuing\n";
+		    }
+		}else{
+		    DISCERN_INTERSECTION_DEBUG std::cerr << "          already found that one, going on\n";
+		}
+	    } // if(foundit)
+	}else{ // if(sz==2 || sz==3)
+	    DISCERN_INTERSECTION_DEBUG std::cerr << "\n";
+	}
+    } // for(size_t val=1;val<N+1;val++)
+    DISCERN_INTERSECTION_DEBUG{
+	std::cerr << "  finished "
+	    << gts[primary].name << " " << which << " - "
+	    << gts[secondary].name << " without finding anything\n";
+    }
+    return count;
+}
+
+//! look for an x-wing, swordfish, or jellyfish
+/*! looks for an x wing, a swordfish, or a jellyfish in rows or columns
+ * \param depth two for x-wing, three for swordfish, four for jellyfish
+ * \param which either GT_ROW or GT_COLUMN, the two group types this applies to
+ * \return true if found an interlock and as a result one or more pvals
+ *    were removed from one or more squares
+ */
 template<const unsigned int N>
 bool
 board<N>::discern_interlock(size_t depth,grouptype which)
 {
-    // depth is two for x-wing, three for swordfish, etc.
-    // which is either GT_ROW or GT_COLUMN, the two group types this applies to
-    //
-    std::vector<size_t> rows;
-    std::vector<size_t> cols;
-    std::vector<std::set<size_t>> colsets;
-    std::vector<std::set<size_t>> rowsets;
-    //std::vector<std::map<size_t,std::vector<square*>>> mvss;
+    std::vector<size_t> rows_or_cols;
     std::vector<std::vector<square*>> mvss;
-    rows.resize(depth);
-    cols.resize(depth);
-    colsets.resize(depth);
-    rowsets.resize(depth);
+    rows_or_cols.resize(depth);
     mvss.resize(depth);
+    // the flags are used to mark squares as having had particular things
+    // applied and to check if they are already applied. This map just maps
+    // the values to the depth so that I can grab the one I want without 
+    // having to do any decision making.
     std::map<size_t,square::matched_type> flags{
-	{2,square::AM_X_WING},
-	{3,square::AM_SWORDFISH},
-	{4,square::AM_JELLYFISH}
+	{2,square::matched_type::AM_X_WING},
+	{3,square::matched_type::AM_SWORDFISH},
+	{4,square::matched_type::AM_JELLYFISH}
     };
 
-    // what I want
-    // for a given depth, if a candidate is found, and we aren't at max depth
-    // go to a deeper depth.  If a interlock-N is not found, we will return to 
-    // our depth, and continue.
-    DISCERN_INTERLOCK_DEBUG std::cerr << "DISCERN_INTERLOCK--depth: " << depth << "\n";
+#if defined(SHOW_DISCERN_INTERLOCK_DEBUG)
+    std::map<size_t,std::string> AM_NAMES{
+	{2,"x-wing"},
+	{3,"swordfish"},
+	{4,"jellyfish"}
+    };
+#else
+    char AM_NAMES[1];
+#endif
+    DISCERN_INTERLOCK_DEBUG{
+	std::cerr << "discern_interlock() of type " << AM_NAMES[depth] << " (depth is " << depth << ")--for " << which << "\n";
+    }
 
-    size_t d=0;
-    rows[0]=0;
-    cols[0]=0;
+    // what I want:
+    //
+    // we want depth rows (or columns, but I'll just say rows to keep it 
+    // simpler), that have 2 <= N <= depth squares that are the only squares
+    // on their row that have the candidate number we're looking for. So if
+    // we're working on 7, we want
+    //              number rows    number squares with 7 in pvals
+    // x-wing            2                      2
+    // swordfish         3                    2 or 3
+    // jellyfish         4                  2, 3 or 4
+    //
+    // So we make a loop on number, 1-9, and then inside the loop
+    // we use num_row to keep track of which of our 2 or 3 or 4 rows
+    // we are looking at.  We also keep a vector of length 2, 3, or 4 (depth)
+    // and if, for example we're working on 7 and we find a candidate row,
+    // say 6, with num_row 0, we set rows_or_cols[num_row] to 6, and bump
+    // up num_row and go back up and start looking again from row 7.
+    // go to a deeper depth.  If a interlock-N is not found, we will return to 
+    // our depth, and continue to see if there is another candidate at our
+    // depth that has 
+    //
+    // for all possible values we will set d, our index into our list of
+    // possible rows that have 2 <= n <=depth squares with the current val
+    // in their pvals. i.e. if depth is 2, (x-wing), and val is 3 and which
+    // is GT_ROW, we are looking for two rows, that have only two squares
+    // with pvals containing 3.
+    // If instead, depth is 3, (swordfish), we are looking for three rows
+    // that have either 2, or 3 squares only with 3 in their pvals.
+    // If instead, depth is 4, (jellyfish), we are looking for four rows
+    // that have either 2, 3, or 4 squares only with 3 in their pvals.
+    // To do this, for each val, 1 through 9, we set d to zero and start
+    // walking the rows. If we find a candidate, we note it and bump up d.
+    // Suppose that there was a swordfish on 2 in rows 3, 5, and 6. Then
+    // rows[0] would contain 3
+    // rows[1] would contain 5
+    // rows[2] would contain 6
 
     for(size_t val=1;val<N+1;val++){
-	d=0;
-	rows[d]=0;
-	bool continueon=true;
-	while(continueon){
-	    DISCERN_INTERLOCK_DEBUG{
-		if(which==GT_ROW){
-		    std::cerr << "TOP OF LOOP--d: " << d << ", rows[d]: " << rows[d] << ", val: " << val << "\n";
-		}else{
-		    std::cerr << "TOP OF LOOP--d: " << d << ", cols[d]: " << cols[d] << ", val: " << val << "\n";
-		}
-	    }
+	// get a list of all of the row (or column) numbers that contain
+	// only 2 < n < depth squares with this val in their pval
+	DISCERN_INTERLOCK_DEBUG{
+	    std::cerr << "top of loop, val is " << val << '\n';
+	}
+	std::vector<size_t> all_rows_or_cols; // all rows with 2,depth of val
+	std::vector<std::vector<square*>> aroc_vs;
+	for(size_t ctr=0;ctr<N;ctr++){
+	    size_t sz;
 	    if(which==GT_ROW){
-		mvss[d]=get_possibilities(GT_ROW,rows[d])[val];
+		sz=get_possibilities(GT_ROW,ctr)[val].size();
 	    }else{
-		mvss[d]=get_possibilities(GT_COLUMN,cols[d])[val];
+		sz=get_possibilities(GT_COLUMN,ctr)[val].size();
 	    }
-	    size_t the_size=mvss[d].size();
-	    bool already_set=true;
-	    if(the_size){
-		for(size_t ctr=0;ctr<the_size;ctr++){
-		    if(!mvss[d][ctr]->check_matched_type(flags[depth])){
-			already_set=false;
-		    }
-		}
-	    }
-	    if(the_size>=2 && the_size<=depth && !already_set){
-		DISCERN_INTERLOCK_DEBUG std::cerr << "2 < size < " << depth << '\n';
-		DISCERN_INTERLOCK_DEBUG{
-		    if(which==GT_ROW){
-			std::cerr << "Got possibilities for row " << rows[d] << " and val " << val << "\n";
-		    }else{
-			std::cerr << "Got possibilities for col " << cols[d] << " and val " << val << "\n";
-		    }
-		    for(size_t ctr=0;ctr<mvss[d].size();ctr++){
-			std::cerr << " " << *(mvss[d][ctr]);
-		    }
-		}
-		size_t setsize;
-		if(which==GT_ROW){
-		    if(d>0){
-			colsets[d]=colsets[d-1];
-		    }
-		    for(size_t ctr=0;ctr<mvss[d].size();ctr++){
-			colsets[d].insert(mvss[d][ctr]->get_column());
-		    }
-		    setsize=colsets.size();
-		}else{
-		    if(d>0){
-			rowsets[d]=rowsets[d-1];
-		    }
-		    for(size_t ctr=0;ctr<mvss[d].size();ctr++){
-			rowsets[d].insert(mvss[d][ctr]->get_row());
-		    }
-		    setsize=rowsets.size();
-		}
-		if(setsize<=depth){
-		    DISCERN_INTERLOCK_DEBUG std::cerr << "row/colsets.size() <=depth (" << setsize << ")\n";
-		    if(d==depth-1){
-			DISCERN_INTERLOCK_DEBUG std::cerr << "d==depth-1, so check for final win!!!\n";
-			std::set<size_t> rowset;
-			std::set<size_t> colset;
-			for(size_t adepth=0;adepth<depth;adepth++){
-			    for(size_t ctr=0;ctr<mvss[adepth].size();ctr++){
-				rowset.insert(mvss[adepth][ctr]->get_row());
-				colset.insert(mvss[adepth][ctr]->get_column());
-			    }
-			}
-			if(rowset.size()==depth && colset.size()==depth){
-			    bool did_something=false;
-			    DISCERN_INTERLOCK_DEBUG std::cerr << "row/colsets.size()==depth so we have found our interlock of depth " << depth << '\n';
-			    // found it!!!
-			    // mark mvss[0-depth-1][0 up to depth]
-			    // as set_matched_type(flags[depth]);
-			    // pass all rows and all columns and val to
-			    // a method that will walk the columns, skipping the
-			    // rows, and purge the val from the squares.
-			    // return true;
-
-			    RESPATH{
-				switch(depth){
-				    case 2:
-					std::cerr << "x-wing";
-					break;
-				    case 3:
-					std::cerr << "swordfish";
-					break;
-				    case 4:
-					std::cerr << "jellyfish";
-				}
-				std::cerr << "-in-";
-				switch(which){
-				    case GT_ROW:
-					std::cerr << "rows";
-					break;
-				    default:
-					std::cerr << "columns";
-					break;
-				}
-				std::cerr << " n" << val;
-			    }
-			    RESPATH{
-				std::cerr << "{";
-				bool first_time=true;
-				for(size_t adepth=0;adepth<depth;adepth++){
-				    for(size_t ctr=0;ctr<mvss[adepth].size();ctr++){
-					if(!first_time){
-					    std::cerr << ' ';
-					}
-					first_time=false;
-					std::cerr << "r" << mvss[adepth][ctr]->get_row()+1 << "c" << mvss[adepth][ctr]->get_column()+1;
-				    }
-				}
-				std::cerr << "}  ==>";
-			    }
-			    for(size_t adepth=0;adepth<depth;adepth++){
-				for(size_t ctr=0;ctr<mvss[adepth].size();ctr++){
-				    mvss[adepth][ctr]->set_matched_type(flags[depth]);
-				}
-			    }
-			    did_something=purge_row_col_sets(which,rowset,colset,val);
-			    RESPATH  std::cerr << "\n";
-			    return did_something;
-			}else{
-			    DISCERN_INTERLOCK_DEBUG std::cerr << "nope, we didn't find it\n";
-			}
-		    }else{
-			DISCERN_INTERLOCK_DEBUG std::cerr << "Not a maximum depth, so just bump of d and at new level set row to 1 more than our row\n";
-			++d;
-			if(which==GT_ROW){
-			    rows[d]=rows[d-1];
-			}else{
-			    cols[d]=cols[d-1];
-			}
-			if(d==depth){
-			    return false;
-			}
-		    }
-		}
-	    }
-
-	    if(which==GT_ROW){
-		while(++rows[d]==(N+1)){ // bump up rows and if done deal with it
-		    DISCERN_INTERLOCK_DEBUG std::cerr << "end of row loop for d==" << d << ", rows[d]: " << rows[d] << '\n';
-		    if(d==0){
-			DISCERN_INTERLOCK_DEBUG std::cerr << "backed up to d0, falling through to do val++;\n";
-			rows[0]=0;
-			continueon=false;
-
-			break;
-		    }else{
-			d--;
-			colsets[d].clear();
-			DISCERN_INTERLOCK_DEBUG std::cerr << "backing up a level\n";
-		    }
-		}
-	    }else{
-		while(++cols[d]==(N+1)){
-		    DISCERN_INTERLOCK_DEBUG std::cerr << "end of col loop for d==" << d << ", cols[d]: " << cols[d] << '\n';
-		    if(d==0){
-			DISCERN_INTERLOCK_DEBUG std::cerr << "backed up to d0, falling through to do val++;\n";
-			cols[0]=0;
-			continueon=false;
-
-			break;
-		    }else{
-			d--;
-			rowsets[d].clear();
-			DISCERN_INTERLOCK_DEBUG std::cerr << "backing up a level\n";
-		    }
-		}
+	    if(sz>=2 && sz<=depth){
+		all_rows_or_cols.push_back(ctr);
 	    }
 	}
-    }
+	size_t the_size=all_rows_or_cols.size(); // number of candidate rows
+	DISCERN_INTERLOCK_DEBUG{
+	    std::cout << "  " << the_size << ' '
+		<< (which==GT_ROW?"rows":"columns")
+		<< " have [2, " << depth << "] squares with val " << val <<
+		" in their pvals\n";
+	}
+	if(the_size < depth){
+	    DISCERN_INTERLOCK_DEBUG{
+		std::cout << "    that's not enough for a " << AM_NAMES[depth] 
+		    << " (depth " << depth << "), continuing\n";
+	    }
+	    continue;
+	}
+	for( size_t aval : all_rows_or_cols){
+	    DISCERN_INTERLOCK_DEBUG{
+		std::cerr << "    " << (which==GT_ROW?"row":"column")
+		    << " " << aval << ": ";
+	    }
+	    if(which==GT_ROW){
+		aroc_vs.push_back(get_possibilities(GT_ROW,aval)[val]);
+	    }else{
+		aroc_vs.push_back(get_possibilities(GT_COLUMN,aval)[val]);
+	    }
+	    DISCERN_INTERLOCK_DEBUG{
+		bool firsttime=true;
+		for(square* sq : aroc_vs[aroc_vs.size()-1]){
+		    if(!firsttime){
+			std::cerr << " ";
+		    }
+		    firsttime=false;
+		    std::cerr << "{ "
+			<< print_sq_rcp(sq) << " }";
+		}
+		std::cerr << "\n";
+	    }
+	}
+	std::vector<size_t> slots;
+	size_t row_ctr=0;
+	for(row_ctr=0;row_ctr<depth;row_ctr++){
+	    slots.push_back(row_ctr);
+	}
+	size_t tomod=depth-1;
+	while(true){
+	    // check to see if we have an interlock
+	    std::set<size_t> rowset;
+	    std::set<size_t> colset;
+	    for(size_t which_trial=0;which_trial<depth;which_trial++){
+		size_t idx=slots[which_trial]; // idx into arov_vs
+		for(auto sp : aroc_vs[idx]){
+		    rowset.insert(sp->get_row());
+		    colset.insert(sp->get_column());
+		}
+	    }
+
+	    if(rowset.size()==depth && colset.size()==depth){
+		bool foundbool=true;
+		for(size_t which_trial=0;which_trial<depth;which_trial++){
+		    size_t idx=slots[which_trial]; // idx into arov_vs
+		    for(auto sp : aroc_vs[idx]){
+			if(!sp->set_applied_interlock(flags[depth],
+				val,rowset,colset)){
+			    // this interlock is already found
+			    foundbool=false;
+			}
+		    }
+		}
+		if(foundbool){
+		    DISCERN_INTERLOCK_DEBUG{
+			std::cerr << "    found " << AM_NAMES[depth]
+			    << " on " << (which==GT_ROW?"rows":"columns")
+			    << " on val " << val << "\n";
+			std::cerr << "      rows:";
+			for(auto row : rowset){
+			    std::cerr << ' ' << row;
+			}
+			std::cerr << ", columns:";
+			for(auto col : colset){
+			    std::cerr << ' ' << col;
+		
+			}
+			std::cerr << '\n';
+			std::cerr << "        ~~~~";
+			for(size_t ctr=1;ctr<depth;ctr++){
+			    std::cerr << "~~~~~~";
+			}
+			std::cerr << '\n';
+			std::cerr << std::left;
+			for(auto row : rowset){
+			    std::cerr << "        ";
+			    for(auto col : colset){
+				std::cerr << std::setw(6);
+				bool foundit=false;
+				for(size_t sqidx=0;sqidx<depth;sqidx++){
+				    size_t idx=slots[sqidx]; // idx into arov_vs
+				    for(auto sp : aroc_vs[idx]){
+					if( sp->get_row()==row
+					 && sp->get_column()==col){
+					    std::cerr << print_sq_rc(sp);
+					    foundit=true;
+					    break;
+					}
+				    }
+				    if(foundit){
+					break;
+				    }
+				}
+				if(!foundit){
+				    std::cerr << "----";
+				}
+			    }
+			    std::cerr << '\n';
+			}
+			std::cerr << "        ~~~~";
+			for(size_t ctr=1;ctr<depth;ctr++){
+			    std::cerr << "~~~~~~";
+			}
+			std::cerr << '\n';
+		    }
+		    RESPATH{
+			switch(depth){
+			    case 2:
+				std::cerr << "x-wing";
+				break;
+			    case 3:
+				std::cerr << "swordfish";
+				break;
+			    case 4:
+				std::cerr << "jellyfish";
+			}
+			std::cerr << "-in-";
+			switch(which){
+			    case GT_ROW:
+				std::cerr << "rows";
+				break;
+			    default:
+				std::cerr << "columns";
+				break;
+			}
+			std::cerr << " n" << val;
+			std::cerr << "{";
+			bool first_time=true;
+			for(size_t idx : slots){
+			    for(square *sq : aroc_vs[idx]){
+				if(!first_time){
+				    std::cerr << ' ';
+				}
+				first_time=false;
+				std::cerr << "r" << sq->get_row()+1 << "c" << sq->get_column()+1;
+
+			    }
+			}
+			std::cerr << "} ==>";
+		    }
+		    bool did_something=false;
+		    did_something=purge_row_col_sets(which,rowset,colset,val);
+		    RESPATH  std::cerr << "\n";
+		    if(did_something){
+			DISCERN_INTERLOCK_DEBUG{
+			    std::cout << "    interlock did something, returning true\n";
+			}
+			return true;
+		    }else DISCERN_INTERLOCK_DEBUG{
+			std::cerr << "    interlock didn't remove any pvals\n";
+		    }
+		    break;
+		}else{
+		    DISCERN_INTERLOCK_DEBUG{
+		    std::cout << "    found an interlock but we'd already found it\n";
+		    }
+		}
+
+	    }
+	    if(slots[tomod] == the_size-1){
+		ssize_t tmptomod=tomod-1;
+		while(tmptomod>=0 && slots[tmptomod]==slots[tmptomod+1]-1){
+		    --tmptomod;
+		}
+		if(tmptomod==-1){
+		    break;
+		}else{
+		    ++slots[tmptomod];
+		    for(++tmptomod;tmptomod<static_cast<ssize_t>(depth);tmptomod++){
+			slots[tmptomod]=slots[tmptomod-1]+1;
+		    }
+		}
+
+	    }else{
+		++slots[tomod];
+	    }
+	} // end of while true
+	DISCERN_INTERLOCK_DEBUG std::cerr << "  no new interlock, going to next val\n";
+    } // end of val loop
+    DISCERN_INTERLOCK_DEBUG std::cerr << "end of vals, returning false\n\n";
     return false;
 }
 
+/*!
+ * is called by the apply method of hidden_double, hidden_triple, and
+ * hidden_quad. In turn, for each row, and then each column, and then each
+ * block, it calls discern hidden. Each time the call to discern_hidden succeeds
+ * it adds one to the count of successes.
+ * \return count of successes
+ * \param level 2, 3, or 4, for hidden double, triple, or quad respectively
+ */
 template<const unsigned int N>
-bool
+size_t
 board<N>::hidden_apply(size_t level)
 {
+    size_t retval=0;
     HIDDEN_APPLY_DEBUG std::cerr << "hidden_apply()\n";
 
     // check each row for hidden doubles
-    HIDDEN_APPLY_DEBUG std::cerr << "  checking rows for hidden level: " << level << "\n";
+    HIDDEN_APPLY_DEBUG std::cerr << "  checking rows for hidden level: " << level << '\n';
     for(size_t row=0;row<N;row++){
 	HIDDEN_APPLY_DEBUG std::cerr << "    row: " << row << '\n';
-#if defined(SHOW_RESPATH)
-	if(discern_hidden(level, get_possibilities(GT_ROW,row),GT_ROW)){
-#else
-	if(discern_hidden(level, get_possibilities(GT_ROW,row))){
-#endif
+	if(discern_hidden(level, GT_ROW, row)){
 	    HIDDEN_APPLY_DEBUG std::cerr << "      found\n";
-	    return true;
+	    ++retval;
+	    //return true;
 	}
     }
     // check each column for hidden doubles
     HIDDEN_APPLY_DEBUG std::cerr << "  checking columns for hidden level: " << level << "\n";
     for(size_t col=0;col<N;col++){
 	HIDDEN_APPLY_DEBUG std::cerr << "    col: " << col << '\n';
-#if defined(SHOW_RESPATH)
-	if(discern_hidden(level, get_possibilities(GT_COLUMN,col),GT_COLUMN)){
-#else
-	if(discern_hidden(level, get_possibilities(GT_COLUMN,col))){
-#endif
+	if(discern_hidden(level, GT_COLUMN, col)){
 	    HIDDEN_APPLY_DEBUG std::cerr << "      found\n";
-	    return true;
+	    ++retval;
+	    //return true;
 	}
     }
     // check each block for hidden doubles
     HIDDEN_APPLY_DEBUG std::cerr << "  checking blocks for hidden level: " << level << "\n";
     for(size_t block=0;block<N;block++){
 	HIDDEN_APPLY_DEBUG std::cerr << "    block: " << block << '\n';
-#if defined(SHOW_RESPATH)
-	if(discern_hidden(level, get_possibilities(GT_BLOCK,block),GT_BLOCK)){
-#else
-	if(discern_hidden(level, get_possibilities(GT_BLOCK,block))){
-#endif
+	if(discern_hidden(level, GT_BLOCK, block)){
 	    HIDDEN_APPLY_DEBUG std::cerr << "      found\n";
-	    return true;
+	    ++retval;
+	    //return true;
 	}
     }
-    return false;
+    return retval;
+    //return false;
 }
 
+//! This is a heuristic to look for y wings
+/*! y_wing_apply implements the algorithm to search for three cells each 
+ * with 2 members of their pvals, but between them only three pvals.  One of
+ * the cells is the pivot and shares a member of pvals with each of the other
+ * two.  They in turn, share a third pval.  For example, the three squares,
+ * (with the pivot in the middle) could have pvals {1,8} {1,6} {6,8}.  
+ * The first has to be in a group with the second, and the second in a group
+ * with the third (row, column or block is a group), but all three can't be in
+ * the same group.  If all that is true, then in the intersection of squares
+ * visible from the first and the third, we can remove their shared value (in
+ * the example, the 8) from all the square's pvals.
+ * <small><code><pre style="line-height: 1.0">
+ *                                 two cells with 6s same column
+ *                                /
+ * rows   1   2   3   4   5   6   7   8   9
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |   |1  |   |
+ *   1  |   |   |   |   |   |   |   |   |<--- wing 1
+ *      |   |   |   |   |   |   | * | 8 |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |  /|   |   |
+ *   2  |   |   |   |   |   |   | / |   |   | 2 cells with 1s in same block
+ *      |   |   |   |   |   |   |/  |   |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      |   |   |   |   |   |   |1  |   |   |
+ *   3  |   |   |pivot cell --> |  6|   |   | pivot cell
+ *      |   |   |   |   |   |   |  .|   |   |
+ *      +---+---+---+---+---+---+--.+---+---+
+ *      |   |   |   |   |   |   |  .|   |   |
+ *   4  |   |   |   |   |   |   |  .|   |   |
+ *      |   |   |   |   |   |   |  .|   |   |
+ *      +---+---+---+---+---+---+--.+---+---+
+ *      |   |   |   |   |   |   |  .|   |   |
+ *   5  |   |   |   |   |   |   |  .|   |   | 2 cells that can be seen by both
+ *      |   |   |   |   |   |   |  .|   |   | wings, r1c7 and r9c8, can have any
+ *      +---+---+---+---+---+---+--.+---+---+ 8s removed
+ *      |   |   |   |   |   |   |  .|   |   |
+ *   6  |   |   |   |   |   |   |  .|   |   |
+ *      |   |   |   |   |   |   |  .|   |   |
+ *      +---+---+---+---+---+---+--.+---+---+
+ *      |   |   |   |   |   |   |  .|   |   |
+ *   7  |   |   |   |   |   |   |  .|   |   |
+ *      |   |   |   |   |   |   |  .|   |   |
+ *      +---+---+---+---+---+---+--.+---+---+
+ *      |   |   |   |   |   |   |  .|   |   |
+ *   8  |   |   |   |   |   |   |  .|   |   |
+ *      |   |   |   |   |   |   |  .|   |   |
+ *      +---+---+---+---+---+---+--.+---+---+
+ *      |   |   |   |   |   |   |  .|   |   |
+ *   9  |   |   |   |   |   |   |  6| <------ wing2
+ *      |   |   |   |   |   |   | 8 | * |   |
+ *      +---+---+---+---+---+---+---+---+---+
+ *      </pre></code></small>
+ */
 template<const unsigned int N>
 bool
 board<N>::y_wing_apply()
 {
-    Y_WING_APPLY_DEBUG std::cerr << "y_wing_apply()\n";
+    Y_WING_APPLY_DEBUG std::cerr << "board::y_wing_apply()\n";
+
     for(size_t ctr1=0;ctr1<N*N;ctr1++){
 	size_t row1=ctr1/N;
 	size_t col1=ctr1%N;
-	if(b[row1][col1].check_matched_type(square::AM_Y_WING)){
-	    Y_WING_APPLY_DEBUG std::cerr << "found square already Y_WING: " << b[row1][col1] << "--skipping\n";
-	    continue;
-	}
-	if(b[row1][col1].size()!=2){
-	    // only look at squares with 2 pvals
-	    continue;
-	}
-	Y_WING_APPLY_DEBUG  std::cerr << "y-wing apply: found a cell with 2 pvals: " << b[row1][col1] << "--going to check neighbors with two pvals\n";
-	std::set<square*> sqs1=get_neighbors(&b[row1][col1],&square::two_filt);
-	Y_WING_APPLY_DEBUG std::cerr << "found " << sqs1.size() << " neighbors with two pvals\n";
-	if(sqs1.size()>0){
-	    std::set<square*>::iterator it1;
-	    for(it1=sqs1.begin();it1!=sqs1.end();it1++){
-		// we are iterating through the neighbors of b[row1][col1] w/2 pvals
-		Y_WING_APPLY_DEBUG std::cerr << "checking for neighbors of " << **it1 << " with 2 pvals\n";
-		std::set<square*> sqs2=get_neighbors(*it1,&square::two_filt);
-		Y_WING_APPLY_DEBUG std::cerr << "found " << sqs2.size() << " neighbors with two pvals\n";
-		// we have neighbors of a neighbor of b[row1][col1]
-		if(sqs2.size()>1){
-		    // must have original plus one more
-		    std::set<square*>::iterator it2;
-		    for(it2=sqs2.begin();it2!=sqs2.end();it2++){
-			if((*it2)->get_row()!=row1 || (*it2)->get_column()!=col1){
-			    Y_WING_APPLY_DEBUG std::cerr << "found 3rd square: " << **it2 << '\n';
-			    // not our original so we have a chain of three
-			    // b[row1][row2]->**it1->**it2 squares each with only
-			    // two pvals
-			    // Now we check if between them they only have three
-			    // pvals
-			    std::set<size_t> pvals;
-			    pvals.insert(b[row1][col1][0]);
-			    pvals.insert(b[row1][col1][1]);
-			    pvals.insert((**it1)[0]);
-			    pvals.insert((**it1)[1]);
-			    pvals.insert((**it2)[0]);
-			    pvals.insert((**it2)[1]);
-			    Y_WING_APPLY_DEBUG std::cerr << "looking for total of 3 pvals between the three cells, found: " << pvals.size() << '\n';
-			    if(pvals.size()==3){
-				// now check to make sure two don't have same
-				// pvals
-				if(b[row1][col1].same_pvals(**it1) 
-				    ||b[row1][col1].same_pvals(**it2) 
-				    ||(**it1).same_pvals(**it2)){
-				    Y_WING_APPLY_DEBUG std::cerr << "found 3 but two are duplicates, skipping\n";
-				    continue;
-				}
-				if((b[row1][col1].get_row()==(**it1).get_row() 
-				    &&b[row1][col1].get_row()==(**it2).get_row())
-				|| (b[row1][col1].get_column()==(**it1).get_column() 
-				    &&b[row1][col1].get_column()==(**it2).get_column())){
-				    Y_WING_APPLY_DEBUG std::cerr << "co-linear, skipping\n";
-				    continue;
-				}
-				Y_WING_APPLY_DEBUG std::cerr << "right number of pvals, not co-linear, no duplicates--looking hopeful!\n";
-				std::set<square*> sqs3=get_neighbors(*it2,&square::two_filt);
-				std::vector<square*> inter;
-				std::vector<square*>::iterator vi;
-				std::set<square*> sqs1i=get_neighbors(&b[row1][col1]);
-				std::set<square*> sqs3i=get_neighbors(*it2);
-				
-				inter.resize(sqs1i.size()+sqs3i.size());
-				vi=std::set_intersection(sqs1i.begin(),sqs1i.end(),sqs3i.begin(),sqs3i.end(),inter.begin());
-				inter.resize(vi-inter.begin());
-				Y_WING_APPLY_DEBUG std::cerr << "checking size of intersection between first and third: " << inter.size() << "\n";
-				if(inter.size()>1){
-				    size_t shared_val=0;
-				    if(b[row1][col1][0]==(**it2)[0] || b[row1][col1][0]==(**it2)[1]){
-					shared_val=b[row1][col1][0];
-				    }else if(b[row1][col1][1]==(**it2)[0] || b[row1][col1][1]==(**it2)[1]){
-					shared_val=b[row1][col1][1];
-				    }
-				    Y_WING_APPLY_DEBUG std::cerr << "first and third share " << shared_val << '\n';
+	square &wing1=b[row1][col1];
 
-				    RESPATH{
-					square& sq1=b[row1][col1],
-					    &sq2=**it1, &sq3=**it2;
-					std::cerr << "y-wing "
-					    << "{n" << sq1[0] << " n" << sq1[1]
-					    << "}{r" << row1
-					    << "c" << col1 << "}"
-					    << " {n" << sq2[0] << " n" << sq2[1]
-					    << "}{r" << sq2.get_row()
-					    << "c" << sq2.get_column() << "}"
-					    << " {n" << sq3[0] << " n" << sq3[1]
-					    << "}{r" << sq3.get_row()
-					    << "c" << sq3.get_column() << "}"
-					    << " ==>";
-				    }
-				    bool did_something=false;
-				    for(size_t ctr=0;ctr<inter.size();ctr++){
-					//  purge the shared val from all shared
-					//  neighbors
-					if(inter[ctr]!=*it1){
-					    did_something|=clear_pval_val(inter[ctr]->get_row(),inter[ctr]->get_column(),shared_val);
-					}
-				    }
-				    if(did_something){
-					Y_WING_APPLY_DEBUG std::cerr << "found a y-wing:\n";
-					Y_WING_APPLY_DEBUG std::cerr << b[row1][col1] << **it1 << **it2;
-					Y_WING_APPLY_DEBUG std::cerr << "middle one is the pivot\n";
-					Y_WING_APPLY_DEBUG std::cerr << "shared val is: " << shared_val << '\n';
-					Y_WING_APPLY_DEBUG std::cerr << "cleared something, setting AM_Y_WING on three squares and returning true\n";
-					b[row1][col1].set_matched_type(square::AM_Y_WING);
-					(**it1).set_matched_type(square::AM_Y_WING);
-					(**it2).set_matched_type(square::AM_Y_WING);
-					RESPATH std::cerr << "\n";
-					return true;
-				    }
-				    RESPATH std::cerr << "\n";
-				}
-			    }
-			}else{
-			    Y_WING_APPLY_DEBUG std::cerr << " found our original, skipping\n";
+	Y_WING_APPLY_DEBUG{
+	    std::cerr << "top of loop: wing1 candidate: "
+		<< print_sq_rcp(&wing1) << ": ";
+	}
+
+	if(wing1.size()!=2){
+	    // only look at squares with 2 pvals
+	    Y_WING_APPLY_DEBUG std::cerr <<"not 2 pvals, skipping\n";
+	    continue;
+	}
+
+	Y_WING_APPLY_DEBUG{
+	    std::cerr << "2 pvals, checking\n";
+	    std::cerr << "  going to check for neighbors with two pvals\n";
+	}
+
+	std::set<square*> w1_nbrs=get_neighbors(&wing1,&square::two_filt);
+
+	Y_WING_APPLY_DEBUG{
+	    std::cerr << "  found " << w1_nbrs.size()
+		<< " checking through them\n";
+	}
+
+	for(square* nbr : w1_nbrs){
+	    // we are iterating through wing1's neighbors w/2 pvals
+	    // looking for a pivot
+	    square& pivot=*nbr;		// candidate for pivot
+
+	    Y_WING_APPLY_DEBUG{
+		std::cerr << "    pivot candidate: "
+		    << print_sq_rcp(&pivot) << "\n"
+		    << "      going to check for neighbors with 2 pvals\n";
+	    }
+
+	    std::set<square*> pvt_nbrs=get_neighbors(&pivot,&square::two_filt);
+
+	    Y_WING_APPLY_DEBUG{
+		std::cerr << "      found " << pvt_nbrs.size() << " checking through them\n";
+	    }
+
+	    // we have neighbors of the pivot, potential wing2s 
+	    for(square* pvt_nbr : pvt_nbrs){
+		square& wing2=*pvt_nbr;		// wing2 candidate
+		Y_WING_APPLY_DEBUG{
+		    std::cerr << "        wing2 candidate: "
+			<< print_sq_rcp(&wing2) << '\n';
+		}
+		if(wing2==wing1){
+		    Y_WING_APPLY_DEBUG{
+		    std::cerr << "          looking for wing2 but found wing1 again, continuing\n";
+		    }
+		    continue;
+		}
+
+		// not our original so we have a chain of three
+		// wing1->pivot->wing2 squares each with only
+		// two pvals
+		// Now we check if between them they only have three
+		// pvals
+		std::set<size_t> pvals;
+		pvals.insert(wing1[0]);
+		pvals.insert(wing1[1]);
+		pvals.insert(pivot[0]);
+		pvals.insert(pivot[1]);
+		pvals.insert(wing2[0]);
+		pvals.insert(wing2[1]);
+
+		Y_WING_APPLY_DEBUG{
+		std::cerr << "          pvals among the three candidates: "
+		    << pvals.size();
+		}
+		if(pvals.size()!=3){
+		    Y_WING_APPLY_DEBUG{
+			std::cerr << ", but need exactly 3, continuing\n";
+		    }
+		    continue;
+		}
+
+		// now check to make sure two don't have same
+		// pvals
+		//
+		Y_WING_APPLY_DEBUG{
+		    std::cerr << "\n            exactly 3 pvals between wing1, pivot, and wing2:\n"
+			<< "              wing 1: "
+			<< print_sq_rcp(&wing1) << '\n'
+			<< "              pivot : "
+			<< print_sq_rcp(&pivot) << '\n'
+			<< "              wing 2: "
+			<< print_sq_rcp(&wing2) << '\n';
+		}
+
+		if(wing1.same_pvals(pivot)
+		    ||wing1.same_pvals(wing2)
+		    ||pivot.same_pvals(wing2)){
+		    Y_WING_APPLY_DEBUG{
+			std::cerr << "                two squares have exactly same pvals, skipping\n";
+		    }
+		    continue;
+		}
+		// check, the wings shouldn't share row,
+		// column, nor block
+		if(wing1.get_row()==wing2.get_row()
+		  || wing1.get_column()==wing2.get_column()
+		  || get_block_num(wing1)==get_block_num(wing2)){
+		    Y_WING_APPLY_DEBUG{
+			std::cerr << "                wing1 and wing2 in a group together, skipping\n";
+		    }
+		    continue;
+		}
+		Y_WING_APPLY_DEBUG{
+		    std::cerr
+		    << "                "
+		    << "right number of pvals\n"
+		    << "                "
+		    << "wings in different groups\n"
+		    << "                "
+		    << "no duplicates--looking hopeful!\n"
+		    << "                checking to see if we've already found it\n";
+		}
+
+		if(pivot.check_applied_y_wing(wing1, pivot, wing2)){
+		    Y_WING_APPLY_DEBUG{
+			std::cerr << "                  we've already found it, skipping\n";
+		    }
+		    continue;
+		}else{
+		    Y_WING_APPLY_DEBUG{
+			std::cerr << "                  We haven't found it before!!! Yay!!!\n";
+		    }
+		}
+
+		std::vector<square*> inter;
+		std::vector<square*>::iterator vi;
+		std::set<square*> sqs1i=get_neighbors(&wing1);
+		std::set<square*> sqs3i=get_neighbors(&wing2);
+		inter.resize(sqs1i.size()+sqs3i.size());
+		vi=std::set_intersection(sqs1i.begin(),sqs1i.end(),sqs3i.begin(),sqs3i.end(),inter.begin());
+		inter.resize(vi-inter.begin());
+		Y_WING_APPLY_DEBUG std::cerr << "                shared neighbors between the wings: " << inter.size() << '\n';
+		if(inter.size()>1){
+		    // if the wings don't see any squares in
+		    // common it's not a y-wing, is it.
+		    size_t shared_val=0;
+		    if(wing1[0]==wing2[0] || wing1[0]==wing2[1]){
+			shared_val=wing1[0];
+		    }else{
+			shared_val=wing1[1];
+		    }
+		    Y_WING_APPLY_DEBUG{
+		    for( square *si : inter ){
+			std::cerr << "                   "
+			    << print_sq_rcp(si) << '\n';
+		    }
+		    std::cerr << "                wings share pval: " << shared_val << '\n';
+		    }
+
+
+		    RESPATH{
+			std::cerr << "y-wing "
+			    << "{n" << wing1[0] << " n" << wing1[1]
+			    << "}{r" << row1+1
+			    << "c" << col1+1 << "}"
+			    << " {n" << pivot[0] << " n" << pivot[1]
+			    << "}{r" << pivot.get_row()+1
+			    << "c" << pivot.get_column()+1 << "}"
+			    << " {n" << wing2[0] << " n" << wing2[1]
+			    << "}{r" << wing2.get_row()+1
+			    << "c" << wing2.get_column()+1 << "}"
+			    << " ==>";
+		    }
+		    bool did_something=false;
+		    Y_WING_APPLY_DEBUG{
+			std::cerr << "                found a y-wing, trying to clear pvals\n";
+		    }
+		    
+		    for(square* sqi : inter){
+			//  purge the shared val from all shared
+			//  neighbors
+			if(sqi!=&pivot){
+			    did_something|=clear_pval_val(sqi->get_row(),sqi->get_column(),shared_val);
+			}
+		    }
+		    RESPATH std::cerr << "\n";
+		    if(did_something){
+			Y_WING_APPLY_DEBUG{
+			    std::cerr << "                  cleared something!\n                    set AM_Y_WING on three squares and return true\n\n";
+			}
+			wing1.set_applied_y_wing( wing1,  pivot,  wing2);
+			pivot.set_applied_y_wing( wing1,  pivot,  wing2);
+			wing2.set_applied_y_wing( wing1,  pivot,  wing2);
+			return true;
+		    }else{
+			Y_WING_APPLY_DEBUG{
+			    std::cerr << "                  didn't clear anything, just continuing\n";
 			}
 		    }
 		}
 	    }
 	}
     }
+    Y_WING_APPLY_DEBUG std::cerr << "Got through the whole board without finding a y-wing!\n";
     return false;
 }
 
+/*!
+ * is called by the apply method of naked_double, naked_triple, and
+ * naked_quad. In turn, for each row, and then each column, and then each
+ * block, it calls discern naked. Each time the call to discern_naked succeeds
+ * it adds one to the count of successes.
+ * \return count of successes
+ * \param level 2, 3, or 4, for naked double, triple, or quad respectively
+ */
 template<const unsigned int N>
-bool
+size_t
 board<N>::naked_apply(size_t level)
 {
+    size_t retval=0;
     NAKED_APPLY_DEBUG std::cerr << "naked_apply()\n";
 
     // check each row for naked N
     NAKED_APPLY_DEBUG std::cerr << "  checking rows for naked level: " << level << "\n";
+    //bool foundone=false;
     for(size_t row=0;row<N;row++){
 	NAKED_APPLY_DEBUG std::cerr << "    row: " << row << '\n';
-#if defined(SHOW_RESPATH)
-	if(discern_naked(level, get_squares(GT_ROW,row),GT_ROW)){
-#else
-	if(discern_naked(level, get_squares(GT_ROW,row))){
-#endif
+	if(discern_naked(level, GT_ROW,row)){
 	    NAKED_APPLY_DEBUG std::cerr << "      found\n";
-	    return true;
+	    retval++;
 	}
     }
     // check each column for naked N
     NAKED_APPLY_DEBUG std::cerr << "  checking columns for naked level: " << level << "\n";
     for(size_t col=0;col<N;col++){
 	NAKED_APPLY_DEBUG std::cerr << "    col: " << col << '\n';
-#if defined(SHOW_RESPATH)
-	if(discern_naked(level, get_squares(GT_COLUMN,col),GT_COLUMN)){
-#else
-	if(discern_naked(level, get_squares(GT_COLUMN,col))){
-#endif
+	if(discern_naked(level, GT_COLUMN,col)){
 	    NAKED_APPLY_DEBUG std::cerr << "      found\n";
-	    return true;
+	    retval++;
 	}
     }
     // check each block for naked N
     NAKED_APPLY_DEBUG std::cerr << "  checking blocks for naked level: " << level << "\n";
     for(size_t block=0;block<N;block++){
 	NAKED_APPLY_DEBUG std::cerr << "    block: " << block << '\n';
-#if defined(SHOW_RESPATH)
-	if(discern_naked(level, get_squares(GT_BLOCK,block),GT_BLOCK)){
-#else
-	if(discern_naked(level, get_squares(GT_BLOCK,block))){
-#endif
+	if(discern_naked(level, GT_BLOCK,block)){
 	    NAKED_APPLY_DEBUG std::cerr << "      found\n";
-	    return true;
+	    retval++;
 	}
     }
-    return false;
+    return retval;
 }
 
 template<const unsigned int N>
@@ -3229,55 +4936,57 @@ board<N>::xy_chain_apply(std::vector<square*> &chain)
      * can't have 6 for its value and will set its other pval as the value.
      */
     if(chain.size()==0){
-	XY_CHAIN_DEBUG std::cout << "xy_chain_apply  chain.size()==0 returning false\n";
+	XY_CHAIN_DEBUG std::cerr << "xy_chain_apply  chain.size()==0 returning false\n";
 	return false;
     }
     XY_CHAIN_DEBUG {
-    std::cout << "xy_chain_apply ";
-    for(size_t i=0;i<chain.size();i++){
-	size_t lo=chain[i]->get_xy_owned();
-	std::cout
-	    << 'r' << chain[i]->get_row()
-	    << 'c' << chain[i]->get_column()
-	    << " {";
-	if(lo==static_cast<size_t>((*chain[i])[0])){
-	    std::cout << "|" << (*chain[i])[0] << "|"
-	    << "," << (*chain[i])[1] << "} ";
-	}else{
-	    std::cout << (*chain[i])[0]
-	    << ",|" << (*chain[i])[1] << "|} ";
+	std::cerr << "xy_chain_apply size " << chain.size() << " ";
+	for(size_t i=0;i<chain.size();i++){
+	    size_t lo=chain[i]->get_xy_owned();
+	    std::cerr << print_sq_rc(chain[i]) << " {";
+	    if(lo==static_cast<size_t>((*chain[i])[0])){
+		std::cerr << "|" << (*chain[i])[0] << "|"
+		<< "," << (*chain[i])[1] << "} ";
+	    }else{
+		std::cerr << (*chain[i])[0]
+		<< ",|" << (*chain[i])[1] << "|} ";
+	    }
 	}
-    }
-    std::cout << '\n';
+	std::cerr << '\n';
     }
     square *last_square=chain.back();
-    XY_CHAIN_DEBUG std::cout << "last_square: " << *last_square << '\n';
-
-    XY_CHAIN_DEBUG std::cout << "calling get_neighbors for: " << *last_square << '\n';
-    std::set<square*> cands=get_neighbors(last_square,&square::xy_chain_filt);
-    XY_CHAIN_DEBUG std::cout << "  there are " << cands.size() << " candidates for the next link\n";
     size_t last_owned=last_square->get_xy_owned();
     size_t next_matched=last_square->get_xy_next();
+    XY_CHAIN_DEBUG std::cerr << "calling get_neighbors to find neighbors with " << last_owned << "s in their pvals we could rule out\n";
+    std::set<square*> cands=get_neighbors(last_square,&square::xy_chain_filt);
+    XY_CHAIN_DEBUG{
+	std::cerr << "  there are " << cands.size() << " candidates for the next link\n";
+	for(auto i=cands.begin();i!=cands.end();i++){
+	    std::cerr << **i;
+	}
+	std::cerr << '\n';
+    }
 
     for(auto it=cands.begin();it!=cands.end();it++){
 	square* sq=*it;
-	XY_CHAIN_DEBUG std::cout << "candidate: " << *sq << '\n';
+	XY_CHAIN_DEBUG std::cerr << "candidate: " << *sq;
 	if(std::find(chain.begin(),chain.end(),sq)==chain.end()){
-	    XY_CHAIN_DEBUG std::cout << "NOT FOUND IN CHAIN ALREADY\n";
+	    XY_CHAIN_DEBUG std::cerr << "  NOT FOUND IN CHAIN ALREADY\n";
 	    // only look if cand square not already in chain to avoid loops
-	    XY_CHAIN_DEBUG std::cout << "last owned: " << last_owned << '\n';
+	    // we are in a square
 	    if(static_cast<size_t>((*sq)[0])==last_owned){
 		sq->set_owned(1);
 	    }else if(static_cast<size_t>((*sq)[1])==last_owned){
 		sq->set_owned(0);
 	    }else{
 		// should never happen
-		XY_CHAIN_DEBUG std::cout << "should never happen, next_matched: " << next_matched << "doesn't match either pval in square: " << *sq << "\n";
+		XY_CHAIN_DEBUG std::cerr << "should never happen, next_matched: " << next_matched << "doesn't match either pval in square: " << *sq << "\n";
 		continue;
 	    }
+	    XY_CHAIN_DEBUG std::cerr << "  pushing candidate onto chain\n";
 	    chain.push_back(sq);
 	    if(chain.size()>2){
-		if(chain[0]->get_xy_next()==sq->get_xy_owned()){
+		if(chain[0]->get_xy_owned()==sq->get_xy_owned()){
 		    size_t row1,row2,col1,col2,blk1,blk2,owned;
 		    row1=chain[0]->get_row();
 		    col1=chain[0]->get_column();
@@ -3287,121 +4996,100 @@ board<N>::xy_chain_apply(std::vector<square*> &chain)
 		    blk2=get_block_num(row2,col2);
 		    owned=sq->get_xy_owned();
 		    if((row1==row2)||(col1==col2)||blk1==blk2){
+			XY_CHAIN_DEBUG{
+			    if(row1==row2){
+				std::cerr << "looks like on same row\n";
+			    }else if(col1==col2){
+				std::cerr << "looks like on same column\n";
+			    }else if(blk1==blk2){
+				std::cerr << "looks like on same block\n";
+			    }else{
+				std::cerr << "WHAT???\n";
+			    }
+			}
+
 			RESPATH{
 			    // this will print the xy-chain even if no pvals
 			    // will be cleared
-			    std::cerr << "xy-chain type1 ";
+			    std::cerr << "xy-chain ";
 
 			    for(size_t i=0;i<chain.size();i++){
 				size_t lo=chain[i]->get_xy_owned();
-				std::cout
-				    << 'r' << chain[i]->get_row()+1
-				    << 'c' << chain[i]->get_column()+1
-				    << "{";
+				std::cerr << print_sq_rc_plus(chain[i]) << "{";
 				if(lo==static_cast<size_t>((*chain[i])[0])){
-				    std::cout << "|" << (*chain[i])[0] << "|"
+				    std::cerr << "|" << (*chain[i])[0] << "|"
 				    << "," << (*chain[i])[1] << "} ";
 				}else{
-				    std::cout << (*chain[i])[0]
+				    std::cerr << (*chain[i])[0]
 				    << ",|" << (*chain[i])[1] << "|} ";
 				}
 			    }
 			    std::cerr << " ==>";
 			}
-			bool rtval=update_pval_for_squares(*chain[0],*sq,owned);
+			bool rtval=clear_pval_val(chain[0]->get_row(),chain[0]->get_column(),owned);
 			RESPATH std::cerr << "\n";
 			if(rtval){
-			    XY_CHAIN_DEBUG std::cout << "cleared some pvals\n";
-			    return true;
-			}
-		    }
-		}else{
-		    size_t rmval=0;
-		    if(sq->in_vals(chain[0]->get_xy_next())){
-			rmval=chain[0]->get_xy_next();
-		    }else if(sq->in_vals(chain[0]->get_xy_owned())){
-			rmval=chain[0]->get_xy_owned();
-		    }
-		    if(rmval && can_see(*chain[0],*sq)){ 
-			RESPATH{
-			    // this will print the xy-chain even if no pvals
-			    // will be cleared
-			    std::cerr << "xy-chain type2 ";
-
-			    for(size_t i=0;i<chain.size();i++){
-				size_t lo=chain[i]->get_xy_owned();
-				std::cout
-				    << 'r' << chain[i]->get_row()+1
-				    << 'c' << chain[i]->get_column()+1
-				    << "{";
-				if(lo==static_cast<size_t>((*chain[i])[0])){
-				    std::cout << "|" << (*chain[i])[0] << "|"
-				    << "," << (*chain[i])[1] << "} ";
-				}else{
-				    std::cout << (*chain[i])[0]
-				    << ",|" << (*chain[i])[1] << "|} ";
-				}
-			    }
-			    std::cerr << " ==>";
-			}
-			bool rtval=clear_pval_val(chain[0]->get_row(),chain[0]->get_column(),rmval);
-			RESPATH std::cerr << '\n';
-			if(rtval){
-			    XY_CHAIN_DEBUG std::cout << "cleared some pvals\n";
+			    XY_CHAIN_DEBUG std::cerr << "cleared some pvals\n";
 			    return true;
 			}
 		    }
 		}
 	    }
 	    if(xy_chain_apply(chain)){
-		XY_CHAIN_DEBUG std::cout << "recursive returned true so returning true\n";
+		XY_CHAIN_DEBUG std::cerr << "recursive returned true so returning true\n";
 		return true;
 	    }else{
 		chain.pop_back();
 	    }
 	}else{
-	    XY_CHAIN_DEBUG std::cout << "FOUND IN CHAIN ALREADY SO SKIPPING\n";
+	    XY_CHAIN_DEBUG std::cerr << "FOUND IN CHAIN ALREADY SO SKIPPING\n";
 	}
     }
-    XY_CHAIN_DEBUG std::cout << "returning false\n";
+    XY_CHAIN_DEBUG std::cerr << "returning false\n";
     return false;
 }
 
+/*! the only reason for this routine is so that x-wing swordfish and
+ * jellyfish don't have to call discern_interlock twice, once for 
+ * rows and once for columns. They just call this guy once, and he
+ * calls discern_interlock twice.
+ * \param depth 2,3, or 4, for x-wing, swordfish, and jellyfish respectively
+ * \return true iff the appropriated depth interlock was found and applying
+ * it resulted in fewer pvals somewhere on the board
+ */
 template<const unsigned int N>
 bool
 board<N>::interlock_apply(size_t depth)
 {
     assert(depth>=2);
+    bool foundone=false;
     INTERLOCK_APPLY_DEBUG std::cerr << "interlock_apply()\n";
 
+    INTERLOCK_APPLY_DEBUG std::cerr << "calling discern_interlock(" << depth << ",GT_ROW)\n";
     if(discern_interlock(depth,GT_ROW)){
-	INTERLOCK_APPLY_DEBUG std::cerr << "      found\n";
-	return true;
+	INTERLOCK_APPLY_DEBUG std::cerr << "called discern_interlock(" << depth << ",GT_ROW) and found one!!! Yay!!!\n";
+	foundone=true;
     }
+    INTERLOCK_APPLY_DEBUG std::cerr << "calling discern_interlock(" << depth << ",GT_COLUMN)\n";
     if(discern_interlock(depth,GT_COLUMN)){
-	INTERLOCK_APPLY_DEBUG std::cerr << "      found\n";
-	return true;
+	INTERLOCK_APPLY_DEBUG std::cerr << "called discern_interlock(" << depth << ",GT_COLUMN) and found one!!! Yay!!!\n";
+	foundone=true;
     }
-    return false;
+    return foundone;
 }
 
 template<const unsigned int N>
 void
 board<N>::init()
 {
+    suppress_output=true;
     root=sqrt(double(N));
     assert(root*root==N);
     backed_count=0;
-    set_squares=0;
     // the resizes result in default constructors for elements being called.
     b.resize(N);
     for(size_t ctr=0;ctr<N;ctr++){
 	b[ctr].resize(N);
-    }
-    for(size_t val=1;val<N;val++){
-	row_possibilities[val];
-	column_possibilities[val];
-	block_possibilities[val];
     }
     BOARD_CONSTRUCT_DEBUG std::cerr << "sizes reserved for board\n";
     // We set row and column early so that we can log changes
@@ -3411,41 +5099,61 @@ board<N>::init()
 	}
     }
     valid=true;
-    //clear();
     register_strategies();
 }
 
+//! default constructor
+/*! default constructor calls init to set up the board
+ */
 template<const unsigned int N>
 board<N>::board():valid(true)
 {
     bool ssup=suppress_output;
-    suppress_output=true;
     BOARD_CONSTRUCT_DEBUG std::cerr << "~~~ board()\n";
     init();
     suppress_output=ssup;
 }
 
+/*! This constructor is used in testing. A vector of squares is passed in
+ * with some particular pattern of square values and pvals that will cause
+ * some particular path through the code. We construct a default board, then
+ * walk through the vector and set those particular squares.
+ */
 template<const unsigned int N>
 board<N>::board(std::vector<square> sqs)
 {
     bool ssup=suppress_output;
-    suppress_output=true;
     init();
     for(size_t ctr=0;ctr<sqs.size();ctr++){
 	b[sqs[ctr].get_row()][sqs[ctr].get_column()]=sqs[ctr];
     }
-    update_possibilities();
     suppress_output=ssup;
 }
 
 template<const unsigned int N>
+board<N>::board(std::initializer_list<square> sqs)
+{
+    bool ssup=suppress_output;
+    init();
+    for(auto sq : sqs){
+	b[sq.get_row()][sq.get_column()]=sq;
+    }
+    suppress_output=ssup;
+}
+
+//! construct board from string
+/*! This constructor takes a string of . or 0 for unset, and values for
+ * set squares and constructs the appropriate square.
+ * \param in a row major representation of a board using . or 0 for unset,
+ * and numbers for set squares.
+ */
+template<const unsigned int N>
 board<N>::board(std::string in)
 {
     bool ssup=suppress_output;
-    suppress_output=true;
     BOARD_CONSTRUCT_DEBUG std::cerr << "~~~ board(std::string in)\n";
     init();
-    //assert(N*N==in.size());
+    assert(N*N==in.size());
     if(N*N>in.size()) throw board_shortstring();
     if(N*N<in.size()) throw board_longstring();
     for(size_t ctr=0;ctr<N*N;ctr++){
@@ -3483,14 +5191,25 @@ board<N>::operator=(const board& other)
 {
     for(size_t rctr=0;rctr<N;rctr++){
 	for(size_t cctr=0;cctr<N;cctr++){
-	    b[rctr][cctr]=other.b[rctr][cctr];
+	    b[rctr][cctr]=other.b[rctr][cctr]; // segfault here 
 	}
     }
+    for(size_t val=1;val<N;val++){
+	row_possibilities[val];
+	column_possibilities[val];
+	block_possibilities[val];
+    }
+    update_possibilities();
     valid=other.valid;
     root=other.root;
     return *this;
 }
 
+//! copy constructor
+/*!
+ * copy constructor just copies all the squares
+ * \param other the board to be copied
+ */
 template<const unsigned int N>
 board<N>::board(const board& other)
 {
@@ -3508,6 +5227,7 @@ board<N>::board(const board& other)
 	    b[rctr][cctr]=other.b[rctr][cctr];
 	}
     }
+    //update_possibilities();
     valid=other.valid;
     root=other.root;
 }
@@ -3524,15 +5244,21 @@ board<N>::clear()
     valid=true;
 }
 
+/*! Walk through all of the columns and for each create a vector of 1-N
+ * then for each square in the column, remove its value from the vector.
+ * At the end, if the vector is empty, then all of the numbers occurred.
+ */
 template<const unsigned int N>
 bool
 board<N>::validate_columns()
 {
     // checks to see if all numbers 0-N+1 are in each column
-    std::vector<unsigned int> pvals;
     for(size_t cctr=0;cctr<N;cctr++){
-	pvals={ 1,2,3,4,5,6,7,8,9 };
+	std::vector<unsigned int> pvals { 1,2,3,4,5,6,7,8,9 };
 	for(size_t rctr=0;rctr<N;rctr++){
+	    // n.b. we don't have to care about std::erase invalidating
+	    // iterators since we get a new one each time through the loop,
+	    // i.e. we don't reuse a potentially invalidated iterator
 	    std::vector<unsigned int>::iterator it;
 	    it=std::find(pvals.begin(),pvals.end(),b[rctr][cctr].get_val());
 	    if(it!=pvals.end()){
@@ -3548,18 +5274,26 @@ board<N>::validate_columns()
     return true;
 }
 
+/*! Walk through all of the rows and for each create a vector of 1-N
+ * then for each square in the row, remove its value from the vector.
+ * At the end, if the vector is empty, then all of the numbers occurred.
+ */
 template<const unsigned int N>
 bool
 board<N>::validate_rows()
 {
     // checks to see if all numbers 0-N+1 are in each row
-    std::vector<unsigned int> pvals;
     for(size_t rctr=0;rctr<N;rctr++){
-	pvals={ 1,2,3,4,5,6,7,8,9 };
+	std::vector<unsigned int> pvals { 1,2,3,4,5,6,7,8,9 };
 	for(size_t cctr=0;cctr<N;cctr++){
+	    // n.b. we don't have to care about std::erase invalidating
+	    // iterators since we get a new one each time through the loop,
+	    // i.e. we don't reuse a potentially invalidated iterator
 	    std::vector<unsigned int>::iterator it;
 	    it=std::find(pvals.begin(),pvals.end(),b[rctr][cctr].get_val());
-	    pvals.erase(it);
+	    if(it!=pvals.end()){
+		pvals.erase(it);
+	    }
 	}
 	if(pvals.size()!=0){
 	    VALIDATE_DEBUG std::cerr << "row " << rctr << " is not correct\n";
@@ -3570,23 +5304,31 @@ board<N>::validate_rows()
     return true;
 }
 
+/*! Walk through all of the blocks and for each create a vector of 1-N
+ * then for each square in the block, remove its value from the vector.
+ * At the end, if the vector is empty, then all of the numbers occurred.
+ */
 template<const unsigned int N>
 bool
 board<N>::validate_blocks()
 {
     // checks to see if all numbers 0-N+1 are in each block
-    std::vector<unsigned int> pvals;
     for(size_t block_num=0; block_num<N;block_num++){
-	pvals={ 1,2,3,4,5,6,7,8,9 };
+	std::vector<unsigned int> pvals { 1,2,3,4,5,6,7,8,9 };
 	size_t row_min=root*(block_num/root),
 	       row_max=row_min+root,
 	       col_min=root*(block_num%root),
 	       col_max=col_min+root;
 	for(size_t rctr=row_min;rctr<row_max;rctr++){
 	    for(size_t cctr=col_min;cctr<col_max;cctr++){
+		// n.b. we don't have to care about std::erase invalidating
+		// iterators since we get a new one each time through the loop,
+		// i.e. we don't reuse a potentially invalidated iterator
 		std::vector<unsigned int>::iterator it;
 		it=std::find(pvals.begin(),pvals.end(),b[rctr][cctr].get_val());
-		pvals.erase(it);
+		if(it!=pvals.end()){
+		    pvals.erase(it);
+		}
 	    }
 	}
 	if(pvals.size()!=0){
@@ -3601,6 +5343,11 @@ board<N>::validate_blocks()
     return true;
 }
 
+//! return true or false for board solved
+/*! Walks through all of the rows, columns, and blocks making sure that they
+ * each contain all of the numbers.
+ * \return true if all rows columns and blocks contain 1-N
+ */
 template<const unsigned int N>
 bool
 board<N>::is_solved()
@@ -3613,64 +5360,66 @@ board<N>::is_solved()
     
 }
 
+//! print number of times each strategies used
+/*! Walk through all the strategies and display to std::cout the number of
+ * times each of them was successfully applied. Successfully means that we
+ * not only found a y-wing, for example, but that as a result, the board
+ * changed, i.e. one or more squares had one or more pvals go away
+ */
 template<const unsigned int N>
 void
 board<N>::print_counts()
 {
     std::cout << "counts:\n";
-    std::cout << std::setw(16) << "naked single: " << std::setw(3) << get_strategy_count("naked single") << '\n';
-    std::cout << std::setw(16) << "hidden single: " << std::setw(3) << get_strategy_count("hidden single") << '\n';
-    std::cout << std::setw(16) << "intersection: " << std::setw(3) << get_strategy_count("intersection") << '\n';
-    std::cout << std::setw(16) << "naked double: " << std::setw(3) << get_strategy_count("naked double") << '\n';
-    std::cout << std::setw(16) << "hidden double: " << std::setw(3) << get_strategy_count("hidden double") << '\n';
-    std::cout << std::setw(16) << "naked triple: " << std::setw(3) << get_strategy_count("naked triple") << '\n';
-    std::cout << std::setw(16) << "hidden triple: " << std::setw(3) << get_strategy_count("hidden triple") << '\n';
-    std::cout << std::setw(16) << "naked quad: " << std::setw(3) << get_strategy_count("naked quad") << '\n';
-    std::cout << std::setw(16) << "hidden quad: " << std::setw(3) << get_strategy_count("hidden quad") << '\n';
-    std::cout << std::setw(16) << "x-wing: " << std::setw(3) << get_strategy_count("x-wing") << '\n';
-    std::cout << std::setw(16) << "swordfish: " << std::setw(3) << get_strategy_count("swordfish") << '\n';
-    std::cout << std::setw(16) << "jellyfish: " << std::setw(3) << get_strategy_count("jellyfish") << '\n';
-    std::cout << std::setw(16) << "y-wing: " << std::setw(3) << get_strategy_count("y-wing") << '\n';
+    for(auto s : sorted_strategies){
+	std::cout << std::setw(14) << s->get_name() << ": " << std::setw(3) << s->get_count() << '\n';
+    }
 }
 
+/*! Prints a small representation of a puzzle to std::out. Squares with known
+ * values show their values and others are blank.
+ */
 template<const unsigned int N>
 void
-board<N>::print(){
-    std::string bdr="+";
+board<N>::print() const {
+    std::string bdr="-";
     for(size_t i=0;i<N;i++){
-	bdr+="-+";
+	bdr+="--";
     }
     for(size_t i=0;i<N;i++){
 	if(i%3==0){
-	    std::cerr << bold;
-	    std::cerr << bdr << "\n|";
-	    std::cerr << unbold;
+	    std::cout << bold;
+	    std::cout << bdr << "\n|";
+	    std::cout << unbold;
 	}else{
-	    std::cerr << bdr << "\n" << bold << "|" << unbold;
+	    std::cout << bdr << "\n" << bold << "|" << unbold;
 	}
 	for(size_t j=0;j<N;j++){
 	    size_t val=b[i][j].get_val();
 	    if(val==0){
-		std::cerr << " ";
+		std::cout << " ";
 	    }else{
 		if(b[i][j].is_locked()){
-		    std::cerr << bold << val << unbold;
+		    std::cout << bold << val << unbold;
 		}else{
-		    std::cerr << val;
+		    std::cout << val;
 		}
 
 	    }
 	    if((j+1)%3==0){
-		std::cerr << bold << '|' << unbold;
+		std::cout << bold << '|' << unbold;
 	    }else{
-		std::cerr << '|';
+		std::cout << '|';
 	    }
 	}
-	std::cerr << '\n';
+	std::cout << '\n';
     }
-    std::cerr << bold << bdr << unbold << "\n";
+    std::cout << bold << bdr << unbold << "\n";
 }
 
+/*! Print to std::cout a representational view of the puzzle with known values
+ * in the center of their squares, and the pvals showing in other squares
+ */
 template<const unsigned int N>
 void
 board<N>::print_large(){
@@ -3678,77 +5427,41 @@ board<N>::print_large(){
     for(size_t i=0;i<N;i++){
 	bdr+="---+";
     }
-    std::cerr << bold << bdr << unbold << "\n";
+    std::cout << bold << bdr << unbold << "\n";
     for(size_t row=0;row<N;row++){
 	for(size_t subrow=0;subrow<root;subrow++){
 	    for(size_t col=0;col<N;col++){
 		if(!(col%root)){
-		    std::cerr << bold << '|' << unbold;
+		    std::cout << bold << '|' << unbold;
 		}else{
-		    std::cerr << '|';
+		    std::cout << '|';
 		}
 
 		for(size_t subcol=0;subcol<root;subcol++){
 		    if(b[row][col].get_val()==0){
 			size_t val=(subrow)*root+subcol+1;
 			if(b[row][col].in_vals(val)){
-			    std::cerr << val;
+			    std::cout << color2string(b[row][col].get_color()) << val << toblack;
 			}else{
-			    std::cerr << ' ';
+			    std::cout << ' ';
 			}
 		    }else if(subcol==(root)/2 && subrow==(root)/2){
-			std::cerr << bold << b[row][col].get_val() << unbold;
+			std::cout << bold << tored << b[row][col].get_val() << toblack << unbold;
 		    }else{
-#if !defined(USE_TTY_BOLD)
-			std::cerr << '*';
+#if !defined(USE_ANSI_ESCAPES)
+			std::cout << '*';
 #else
-			std::cerr << ' ';
+			std::cout << ' ';
 #endif
 		    }
 		}
 	    }
-	    std::cerr << bold << "|\n" << unbold;
+	    std::cout << bold << "|\n" << unbold;
 	}
 	if(!((row+1)%root)){
-	    std::cerr << bold << bdr << unbold << "\n";
+	    std::cout << bold << bdr << unbold << "\n";
 	}else{
-	    std::cerr << bdr << '\n';
-	}
-    }
-}
-
-template<const unsigned int N>
-void
-board<N>::print_just_pvals(){
-    std::string bdr="+";
-    for(size_t i=0;i<N;i++){
-	bdr+="---+";
-    }
-    std::cerr << bold << bdr << unbold << "\n";
-    for(size_t row=0;row<N;row++){
-	for(size_t subrow=0;subrow<root;subrow++){
-	    for(size_t col=0;col<N;col++){
-		if(!(col%root)){
-		    std::cerr << bold << '|' << unbold;
-		}else{
-		    std::cerr << '|';
-		}
-
-		for(size_t subcol=0;subcol<root;subcol++){
-		    size_t val=(subrow)*root+subcol+1;
-		    if(b[row][col].in_vals(val)){
-			std::cerr << val;
-		    }else{
-			std::cerr << ' ';
-		    }
-		}
-	    }
-	    std::cerr << "|\n";
-	}
-	if(!((row+1)%root)){
-	    std::cerr << bold << bdr << unbold << "\n";
-	}else{
-	    std::cerr << bdr << '\n';
+	    std::cout << bdr << '\n';
 	}
     }
 }
@@ -3909,8 +5622,7 @@ board<N>::purge_block_except(size_t block, std::vector<square*> sqs,size_t val)
 		std::cerr << ' ';
 	    }
 	    first_time=false;
-	    std::cerr << "r" << sqs[sctr]->get_row()+1
-		<< "c" << sqs[sctr]->get_column()+1;
+	    std::cerr << print_sq_rc_plus(sqs[sctr]);
 	}
 	std::cerr << "} ==>";
     }
@@ -3936,7 +5648,18 @@ bool
 board<N>::purge_row_except(size_t row, std::vector<square*> sqs,size_t val)
 {
     bool did_something=false;
-    RESPATH std::cerr << " ==>";
+    RESPATH{
+	std::cerr << " n" << val << "{";
+	bool first_time=true;
+	for(size_t sctr=0;sctr<sqs.size();sctr++){
+	    if(!first_time){
+		std::cerr << ' ';
+	    }
+	    first_time=false;
+	    print_sq_rc_plus(sqs[sctr]);
+	}
+	std::cerr << "} ==>";
+    }
     for(size_t col=0;col<N;col++){
 	if(std::find(sqs.begin(),sqs.end(),&b[row][col])==sqs.end()){
 	    did_something|=clear_pval_val(row,col,val);
@@ -3957,7 +5680,18 @@ bool
 board<N>::purge_column_except(size_t col, std::vector<square*> sqs,size_t val)
 {
     bool did_something=false;
-    RESPATH std::cerr << " ==>";
+    RESPATH{
+	std::cerr << " n" << val << "{";
+	bool first_time=true;
+	for(size_t sctr=0;sctr<sqs.size();sctr++){
+	    if(!first_time){
+		std::cerr << ' ';
+	    }
+	    first_time=false;
+	    std::cerr << print_sq_rc_plus(sqs[sctr]);
+	}
+	std::cerr << "} ==>";
+    }
     for(size_t row=0;row<N;row++){
 	if(std::find(sqs.begin(),sqs.end(),&b[row][col])==sqs.end()){
 	    did_something|=clear_pval_val(row,col,val);
@@ -3990,6 +5724,8 @@ board<N>::purge_set(size_t row, size_t col, std::set<size_t> s)
 /*!
  * clear all the values NOT in vals from all the squares in sqs
  * used only by discern_hidden() to turn hidden to naked sets
+ * \param sqs a set of squares to have pvals trimmed
+ * \param vals a set of vals to trim
  */
 template<const unsigned int N>
 void
@@ -4050,17 +5786,19 @@ board<N>::set_val(size_t row, size_t col,size_t val,bool set_pval)
      * \param col which column of the board is the square in
      * \param val the value to set the square to
      */
-    if(b[row][col].get_val()==0 && val!=0){
-	set_squares++;
-    }
     if(set_pval){
+	// set_pval is normal case, i.e. the square's pvals will have
+	// only one value after this equal to the square's values.
+	// For brute force, though, the value is just a tentative value
+	// and we don't clear pvals, they are other possibilities
+
 	// You might think, that if set_pval is set and we pass it to
 	// square::set_val, it will just clear the pvals and then set
 	// the single one matching the value being set.  You'd be right.  BUT!
 	// Then we wouldn't maintain our other data structure
 	std::vector<size_t> spv;
 	for(size_t ctr=0;ctr<b[row][col].size();ctr++){
-	    // we make a copy of the squares pvals to avoid the invalidated
+	    // we make a copy of the square's pvals to avoid the invalidated
 	    // iterator in pvals thing.
 	    spv.push_back(b[row][col][ctr]);
 	}
@@ -4079,12 +5817,14 @@ board<N>::set_val(size_t row, size_t col,size_t val,bool set_pval)
     }
     // Finally we set the value
     b[row][col].set_val(val,set_pval);
+    // and make the appearance of the value ripple through pvals
+    update_pvals_for_square(row,col);
 }
 
 /*! does two things.
  * 1) Has the square at b[row][col] take val out of pvals if it exists.
  * 2) If it did exist, adjust the three possibility vectors, rows_possibilities
- *    column_possibilities, and block_possibilities, but removing the
+ *    column_possibilities, and block_possibilities, by removing the
  *    square at b[row][col] from the vector mapped to val in each of the 
  *    possibility arrays.
  * std::map<size_t,std::map<size_t,std::vector<square*>>> row_possibilities;
@@ -4111,16 +5851,17 @@ board<N>::clear_pval_val(size_t row, size_t col,size_t val)
 	return false;
     }
 
-    // ask the square to clear the val, retval means val was set before clearing
-    bool retval=b[row][col].clear_pval_val(val);
+    // ask the square to clear the val, cleared means val set before clearing
+    bool cleared=b[row][col].clear_pval_val(val);
     RESPATH{
-	if(retval && !suppress_output){
-	    std::cerr << " r" << row+1 << "c" << col+1 << " ≠ " << val;
+	// we supress this output on board construction
+	if(cleared && !suppress_output){
+	    std::cerr << ' ' << print_sq_rc_plus(&b[row][col]) << " ≠ " << val;
 	}
     }
     std::vector<square*>::iterator i;
 
-    if(retval){
+    if(cleared){
 	// something happened so fix up the row/colum/block possibilities
 	std::vector<square *>& sqs_row=row_possibilities[row][val];
 	if((i=std::find(sqs_row.begin(),sqs_row.end(),&b[row][col]))!=sqs_row.end()){
@@ -4140,72 +5881,14 @@ board<N>::clear_pval_val(size_t row, size_t col,size_t val)
 	}
 
     }
-    return retval;
-}
-
-/*!
- * given two squares and a pval, remove that pval from any square visible
- * from both of the squares.
- * \param sq1 Square the first
- * \param sq2 Square the second
- * \parem val The pval to be removed
- * \return true if any were found and removed
- */
-template<const unsigned int N>
-bool
-board<N>::update_pval_for_squares(square& sq1,square& sq2, size_t val)
-{
-    bool retval=false;
-    size_t row1,row2,col1,col2,blk1,blk2;
-    row1=sq1.get_row();
-    row2=sq2.get_row();
-    col1=sq1.get_column();
-    col2=sq2.get_column();
-    blk1=get_block_num(row1,col1);
-    blk2=get_block_num(row2,col2);
-
-    if(row1==row2){
-	// walk through all squares not us in our shared row and remove the val
-	// from their pvals if there.  retval will get a true or'd into it if so
-	for(size_t col=0;col<N;col++){
-	    if(col!=col1&&col!=col2){
-		retval|=clear_pval_val(row1,col,val);
-	    }
-	}
-    }
-    if(col1==col2){
-	// walk through all squares not us in our shared column and remove the
-	// val from their pvals if there.  retval will get a true or'd into it
-	// if so
-	for(size_t row=0;row<N;row++){
-	    if(row!=row1&&row!=row2){
-		retval|=clear_pval_val(row,col1,val);
-	    }
-	}
-    }
-    if(blk1==blk2){
-	// walk through all squares not us in our shared block and remove the
-	// val from their pvals if found.  retval will get a true or'd into it
-	// if so
-	size_t row_min=root*(row1/root),
-	       row_max=row_min+root,
-	       col_min=root*(col1/root),
-	       col_max=col_min+root;
-	for(size_t row=row_min;row<row_max;row++){
-	    for(size_t col=col_min;col<col_max;col++){
-		if((col1!=col||row1!=row) && (col2!=col||row2!=row)){
-		    retval|=clear_pval_val(row,col,val);
-		}
-	    }
-	}
-    }
-    return retval;
+    return cleared;
 }
 
 /*!
  * given a row and column, remove the val set in the square at that row and
  * column from every other square that shares a row, column, or block with
  * the square at the row and column
+ * called from board<N>::set_val
  * \param row the row in which we find a square
  * \param col the column in which we find a square
  */
@@ -4260,8 +5943,13 @@ board<N>::update_pvals_for_square(size_t row, size_t col)
 }
 
 /*!
- * given a set of squares and a set of vals, remove from each square in the
- * square set each val in the val set.
+ * given a set of squares and a set of vals, 
+ * 1) Notice if all of the squares are in same row, column, or block
+ *    (could be row and block or column and block)
+ * 2) If all on same row, loop through that row of the board and for
+ *    each square not in the sqs set , remove anything in the v set
+ *    from their pvals. Do the same for column or block match
+ * used from discern_naked for naked pairs, triple, or quads
  * \param sqs a set of squares to operate on
  * \param v a set of values to be removed
  * \return true iff at least one of the vals existed in at least one of the squares and was successfully removed.
@@ -4330,6 +6018,7 @@ board<N>::purge_from_set(std::set<square*>& sqs, std::set<size_t>& v)
  * if group type is GT_ROW, for each column in colset, walk the rows 0-N and
  * if the row is NOT in rowset, remove val from the pvals of the
  * square at row and column.  Conversely for group type of GT_COLUMN.
+ * Called from discern interlock for x-wings, jellyfish, and swordfish
  * \param gt the type of group to purge for, one of GT_ROW, GT_COLUMN, or GT_BLOCK
  * \param rowset set of rows participating in an interlock (x-wing, swordfish, or jellyfish)
  * \param colset set of columns participating in an interlock
@@ -4368,12 +6057,15 @@ template<const unsigned int N>
 void
 board<N>::dump_all_possibilities()
 {
-    //std::map<size_t,std::map<size_t,std::vector<square*>>> row_possibilities;
-    //! map of vals to map of columns to vector of squares in each column with val in pvals
-    //std::map<size_t,std::map<size_t,std::vector<square*>>> column_possibilities;
-    //! map of vals to map of blocks to vector of squares in each block with val in pvals
-    //std::map<size_t,std::map<size_t,std::vector<square*>>> block_possibilities;
-    //! Count of squares that have been set
+    /*! for each row, for each value dumps the squares that have that value
+     * in their pvals
+     *
+     * for each colum, for each value dumps the squares that have that value
+     * in their pvals
+     *
+     * for each block, for each value dumps the squares that have that value
+     * in their pvals
+     */
     std::cout << "~~~~~~~row_possibilities~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     for(size_t row=0;row<N;row++){
 	dump_row_possibilities(row);
@@ -4545,7 +6237,6 @@ board<N>::update_pvals()
 	}
     }
     update_possibilities();
-
 }
 
 /*! generate the possible values for this square based on all the other
@@ -4575,12 +6266,11 @@ board<N>::generate_pvals(unsigned int row, unsigned int col,bool mark_invalid)
 }
 
 /*! generate a random valid complete board.
- * \todo dig into the result to create a puzzle
- * \return true if success (which we always expect)
  * Currently on an old dell inspiron 1420 with linux on it, it can
  * generate more than 20,000 puzzles/second with this method at a rate
  * of about 46µs/board building with g++ with -O3 (with -O0 about
  * 400µs/board).
+ * \return true if success (which we always expect)
  */
 template<const unsigned int N>
 bool
@@ -4656,7 +6346,6 @@ board<N>::generate()
 	    b[row][col].set_locked(true);
 	}
     }
-    set_squares=N*N;
     return true;
 }
 
@@ -4735,11 +6424,16 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  * ST_NONE, ST_HORIZ, ST_VERT, ST_ROT90, ST_ROT180, ST_ROT270, ST_ROT, ST_MDIAG,
  * ST_ADIAG.  The meanings and effects are described below.
  * \param max_clues we dig until we drop to or below this number of clues left
+ * \param status a boolean which if true makes the routine print '.' to the screen each time through loop so the user doesn't think it is hung up. Defaults to false
  * \return true if success (which we always expect)
+ * \todo instead of trying for multiple solutions when getting down to a 
+ * minimum of givens, when eliminating each value, we could substitute all
+ * the other values in that cell and see if any of them leads to solutions
+ * that way we can quit right away after a bad choice.  Needs research
  *
  * \par Comments
- * n.b. squares in this program are numbered horizontally and vertically 0-N-1,
- * which for N of 9, i.e. a usual sudoku puzzle, is 0-8,
+ * n.b. squares in this program are numbered horizontally and vertically 0 - N-1
+ * which for N of 9, i.e. a usual sudoku puzzle, is 0 - 8,
  * and we normally denote them (r,c), or RrCc, so that a square at row seven and
  * column three would be denoted as (7,3) or R7C3).  Note also that if we use
  * N for the size of a column or row, i.e. 9 in a usual sudoku puzzle, we use
@@ -4766,7 +6460,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  3.*.....@.3  (3,8-1), (4,8-0), (5,8-0), (6,8-0) or
  4*.......@4  (3,7), (4,8), (5,8), (6,8)
  5*.......@5  * - original cells
- 6*.......@6  @ - rotated cells
+ 6*.......@6 - rotated cells
  7.........7
  8.........8
   012345678
@@ -4788,7 +6482,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  3.........3  (8-7,3), (8-8,4), (8-8,5), (8-8,6) or
  4.........4  (1,3), (0,4), (0,4), (0,4)
  5.........5  * - original cells
- 6.........6  @ - rotated cells
+ 6.........6 - rotated cells
  7...*.....7
  8....***..8
   012345678
@@ -4806,7 +6500,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
   012345678
  0..*...@..0
  1.**...@@.1  * (1,1), (1,2), (0,2)
- 2.........2  @ (1,6), (1,7), (0,6) (horizontal reflection of *)
+ 2.........2 (1,6), (1,7), (0,6) (horizontal reflection of *)
  3.........3  % (7,1), (7,2), (8,2) (vertical reflection of *)
  4.........4  # (7,6), (7,7), (8,6) (vertical reflection of @)
  5.........5  
@@ -4832,7 +6526,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  3.@.......3  (3,1), (4,0), (5,0), (6,0)
  4@........4
  5@........5  * - original cells
- 6@........6  @ - rotated cells
+ 6@........6 - rotated cells
  7...*.....7
  8....***..8
   012345678
@@ -4854,7 +6548,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  3.........3  or (1,5), (0,4), (0,3), (0,2)
  4.........4
  5.........5  * - original cells
- 6.........6  @ - rotated cells
+ 6.........6 - rotated cells
  7...*.....7
  8....***..8
   012345678
@@ -4877,7 +6571,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  3........@3  or (5,7), (4,8), (4,8), (4,8)
  4........@4
  5.......@.5  * - original cells
- 6.........6  @ - rotated cells
+ 6.........6 - rotated cells
  7...*.....7
  8....***..8
   012345678
@@ -4897,7 +6591,7 @@ board<N>::dig_one(size_t row,size_t col, board<N>& brd, symtype st)
  3.@......@3  or (1,5), (0,4), (0,3), (0,2)
  4@.......@4
  5@......@.5  * - original cells
- 6@........6  @ - rotated cells
+ 6@........6 - rotated cells
  7...*.....7
  8....***..8
   012345678
@@ -4919,7 +6613,7 @@ axis.
  2.........2  main reflection gives (3,7), (4,8), (5,8), (6,8),
  3.......@.3
  4........@4  * - original cells
- 5........@5  @ - rotated cells
+ 5........@5 - rotated cells
  6........@6
  7...*.....7
  8....***..8
@@ -4943,7 +6637,7 @@ axis.
  3@........3  or (5,1), (4,0), (3,0), (2,0)
  4@........4
  5.@.......5  * - original cells
- 6.........6  @ - rotated cells
+ 6.........6 - rotated cells
  7...*.....7
  8....***..8
   012345678
@@ -4962,7 +6656,7 @@ axis.
  4@.......@4  or (5,2), (4,0), (3,0), (2,0), (3,7), (4,8), (5,8), (6,8),
  5.@......@5  (1,5), (0,4), (0,3), (0,2)
  6........@6  * - original cells
- 7...*.....7  @ - rotated cells
+ 7...*.....7 - rotated cells
  8....***..8
   012345678
  \endcode
@@ -4972,6 +6666,7 @@ template<const unsigned int N>
 bool
 board<N>::dig_puzzle(symtype st,size_t max_clues,bool status)
 {
+   
     DIG_DEBUG std::cerr << "dig_puzzle(";
     DIG_DEBUG print_st(std::cerr,st);
     DIG_DEBUG std::cerr << "," << max_clues << ")\n";
@@ -4979,11 +6674,9 @@ board<N>::dig_puzzle(symtype st,size_t max_clues,bool status)
     board<N> b,tmp1;
     b.generate();
     DIG_DEBUG std::cerr << "after generate()~~~~~~~~~~~~~\n";
-    size_t solutions; //=b.brute_force_check();
-    DIG_DEBUG std::cerr << "solutions: " << solutions << '\n';
+    //size_t solutions=b.brute_force_solution(1);
     DIG_DEBUG b.print_large();
-    DIG_DEBUG std::cerr << "after generate()~~~~~~~~~~~~~\n";
-    DIG_DEBUG std::cerr << "bfc: " << b.brute_force_check() << '\n';
+    //DIG_DEBUG std::cerr << "bfc: " << b.brute_force_solution(2) << '\n';
 
     tmp1=b;
     while(true){
@@ -4992,21 +6685,31 @@ board<N>::dig_puzzle(symtype st,size_t max_clues,bool status)
 	size_t col=rand_n(N);
 	dig_one(row,col,tmp1,st);
 	if(tmp1.count()<low_count) low_count=tmp1.count();
-	DIG_DEBUG std::cerr << "count is: " << tmp1.count() << ", low count: " << low_count << "\n";
-	if(tmp1.count()<max_clues){
+	DIG_DEBUG{
+	    std::cerr << "count is: " << tmp1.count()
+		   << ", low count: " << low_count << "\n";
+	}
+	if(tmp1.count() <= max_clues){
 	    DIG_DEBUG std::cerr << "calling bfc\n";
 	    tmp1.update_pvals();
 	    DIG_DEBUG tmp1.print();
-	    size_t solutions=tmp1.brute_force_check();
-	    DIG_DEBUG std::cerr << "called bfc, solutions: " << solutions << "\n";
+	    size_t solutions=tmp1.brute_force_solution(2);
+	    DIG_DEBUG{
+		std::cerr << "called bfc, solutions: " << solutions << "\n";
+	    }
 	    if(solutions>1 || solutions==0){
-		DIG_DEBUG std::cerr << "not 1 solutions, but: " << solutions << ", starting over\n";
+		DIG_DEBUG{
+		    std::cerr << "not 1 solutions, but: " << solutions << ", starting over\n";
+		}
+		if(status){
+		    std::cerr << "starting over, down to " << tmp1.count() << " clues, but " << solutions << " solutions\n";
+		}
+		b.generate();
 		tmp1=b;
-		if(status) std::cerr << "starting over, " << solutions << " solutions\n";
 	    }else {
 		*this=tmp1;
 		DIG_DEBUG std::cerr << "returning a solution\n";
-		update_possibilities();
+		update_pvals();
 		count();
 		return true;
 	    }
@@ -5016,42 +6719,27 @@ board<N>::dig_puzzle(symtype st,size_t max_clues,bool status)
     return true;
 }
 
-/*! using the register name, ("x-wing", "hidden double", etc...), look
+/*! using the registered name, ("x-wing", "hidden double", etc...), look
  * to see how many times the apply method was successfully applied.  Of 
  * course this will make most sense after calling the heuristic_solution()
  * method and solving a puzzle
- * \param s the name of the method as registered
+ * \param name the name of the method as registered
  * \return the number of times the method was successfully invoked with 
- * success meaning that it cause a change in val and/or pvals for one or
+ * success meaning that it caused a change in val and/or pvals for one or
  * more squares. i.e. just because we find a naked double doesn't mean
  * that we'll find pvals that we can clear.  If we don't clear them, then
  * the "naked double" count does not get incremented.
  */
 template<const unsigned int N>
 size_t
-board<N>::get_strategy_count(std::string s)
+board<N>::get_strategy_count(std::string name)
 {
-    typename std::map<size_t, std::map<std::string, class sudoku_method<N>*>>::iterator it1;
-    for(it1=strategies.begin();it1!=strategies.end();it1++){
-	typename std::map<std::string, class sudoku_method<N>*>::iterator it2;
-	if((it2=it1->second.find(s))!=it1->second.end()){
-	    return it2->second->get_count();
+    for(auto strategy : sorted_strategies){
+	if(strategy->get_name() == name){
+	    return strategy->get_count();
 	}
     }
     return 0;
-}
-
-/*! return a running count.  This is the same as the value returned from
- * count() for a heuristic solution, but hugely larger for the brute
- * force solution which may set a square many times before finding the
- * final solution
- * \return the count
- */
-template<const unsigned int N>
-size_t
-board<N>::get_count()
-{
-    return set_squares;
 }
 
 /*! walk through the board and count the squares with values set.
@@ -5069,7 +6757,6 @@ board<N>::count()
 	    }
 	}
     }
-    set_squares=retval;
     return retval;
 }
 
@@ -5095,9 +6782,18 @@ board<N>::heuristic_solution(bool preserve_pvals)
 	// all correct, but in testing, we set up abnormal situations,
 	// i.e. combinations of pvals and vals, to trigger particular paths
 	// through the code, and in that case we do NOT want to update the pvals
+	// In this case we DO want to update the pvals, and that also updates
+	// the possibilities data maps.
 	update_pvals();
+    }else{
+	// even if we aren't updating pvals, we need these data structures
+	// to reflect the pvals we got from testing so that the heuristic
+	// solution methods that use them will work.
+	update_possibilities();
     }
-    clear_strategy_counts();
+    for(auto s : sorted_strategies){
+	s->clear_count();
+    }
 
     HEURISTIC_DEBUG{
 	std::cerr << "  before heuristic\n";
@@ -5108,190 +6804,25 @@ board<N>::heuristic_solution(bool preserve_pvals)
 
     while(progressing && count()!=N*N){
 	progressing=false;
-#if 0
-	if(ns.apply()		// naked single
-		|| hs.apply()	// hidden single
-		|| intr.apply()	// intersections
-		|| nd.apply()	// naked double
-		|| hd.apply()	// hidden double
-		|| nt.apply()	// naked triple
-		|| ht.apply()	// hidden triple
-		|| nq.apply()	// naked quad
-		|| hq.apply()	// hidden quad
-		|| xw.apply()	// x-wing
-		|| yw.apply()	// y-wing
-		|| sf.apply()	// swordfish
-		|| jf.apply()	// jellyfish
-		|| cpc.apply()  // xy-chain
-		){
-#endif
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling naked single apply\n";
-	}
-	if(ns.apply()){
-	    progressing=true;
+	for( auto m : sorted_strategies){
 	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
+		std::cerr << "calling " << std::left << std::setw(13) << m->get_name() << " apply ... ";
 	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling hidden single apply\n";
-	}
-	if(hs.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
+	    if(m->get_sort_level()==0){
+		HEURISTIC_DEBUG{
+		    std::cerr << "disabled, skipping\n";
+		}
+		continue;
 	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling intersection apply\n";
-	}
-	if(intr.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
+	    if(m->apply()){
+		progressing=true;
+		HEURISTIC_DEBUG{
+		    std::cerr << bold << "succeeded!\n" << unbold;
+		}
+		break;
+	    }else{
+		HEURISTIC_DEBUG std::cerr << "failed\n";
 	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling naked double apply\n";
-	}
-	if(nd.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling hidden double apply\n";
-	}
-	if(hd.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling naked triple apply\n";
-	}
-	if(nt.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling hidden triple apply\n";
-	}
-	if(ht.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling naked quad apply\n";
-	}
-	if(nq.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling hidden quad apply\n";
-	}
-	if(hq.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling x-wing apply\n";
-	}
-	if(xw.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling y-wing apply\n";
-	}
-	if(yw.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling swordfish apply\n";
-	}
-	if(sf.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling jellyfish apply\n";
-	}
-	if(jf.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
-	}
-	HEURISTIC_DEBUG{
-	    std::cerr << "calling xy-chain apply\n";
-	}
-	if(cpc.apply()){
-	    progressing=true;
-	    HEURISTIC_DEBUG{
-		std::cerr << "--and apply SUCCEEDED!\n";
-	    }
-	    continue;
-	}else{
-	    HEURISTIC_DEBUG std::cerr << "--and apply failed\n";
 	}
     }
     HEURISTIC_DEBUG{
@@ -5302,365 +6833,227 @@ board<N>::heuristic_solution(bool preserve_pvals)
 }
 
 /*!
- * this method walks cell by cell filling in squares from the first pval
- * and then backing up when it hits a square with 0 pvals.  After backing
- * up, it tries a different pval until it runs out and then backs again.
- * Locked cells, those that were specified as part of the original puzzle
- * are passed over both setting and backing.  If you want to know how
- * many times brute_force_solution() had to back up, you can use the
- * board<N>::get_backed_count() method.  A typical amount on a difficult
- * puzzle will be around five or six thousand times.
- * \return bool always true if success.  It will always succeed if the 
- * puzzle was valid.
- */
-template<const unsigned int N>
-bool
-board<N>::brute_force_solution()
-{
-    bool backed=false;
-    size_t row, col;
-    ssize_t which=0;
-    const ssize_t max=N*N;
-
-    BRUTE_DEBUG std::cerr << "brute force solution ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-    if(valid){
-	while(which!=max){
-	    BRUTE_DEBUG std::cerr << " which: " << which << '\n';
-	    row=which/N;
-	    col=which%N;
-	    BRUTE_DEBUG std::cerr << "square[row: " << row << "][col: " << col << "], locked: " << std::boolalpha << b[row][col].is_locked() << "\n";
-	    if(!b[row][col].is_locked()){
-		BRUTE_DEBUG std::cerr << "square not locked\n";
-		if(!backed){
-		    BRUTE_DEBUG std::cerr << "calling generate_pvals\n";
-		    // this takes up a lot of the execution time...but when
-		    // we get here, we've either just added a square, or,
-		    // possibly, we've taken away a bunch.
-		    generate_pvals(row,col,false);
-		}else{
-		    // here backed was true, so we are dealing with the existing
-		    // pvals with the last used val taken out, so we don't call
-		    // generate_pvals because that would mess it up!  We do set
-		    // backed to false, so as we walk forward we can generate
-		    // pvals for successive squares until we either get a 
-		    // solution, or hit a square with 0 possible values and
-		    // have to back up again and try something different.
-		    BRUTE_DEBUG std::cerr << "not calling generate_pvals() since we backed\n";
-		    backed=false;
-		}
-		if(!b[row][col].size()){
-		    BRUTE_DEBUG std::cerr << "square has no more pvals, rewinding: " << b[row][col];
-		    // There's no more vals, we'll have to rewind.
-		    backed=true;
-		    do{
-			which--;
-			backed_count++;
-			row=which/N;
-			col=which%N;
-			square& sq=b[row][col];
-			BRUTE_DEBUG std::cerr << "    backed up: now square[" << row << "][" << col << "]";
-			if(!sq.is_locked() && sq.size() > 1){
-			    // backing up we skip locked since we can't change
-			    // them, and cells with only one value since we
-			    // would have already tried them.
-			    // Then on the cell we backed up to, we pull the
-			    // value we tried out of pvals and set the val to
-			    // zero so that at the top of the loop we'll try a
-			    // different value.
-			    BRUTE_DEBUG std::cerr << "...found next    -- clearing to 0 and breaking out.\n";
-			    sq.clear_pval_val(sq.get_val());
-			    sq.set_val(0,false);
-			    break;
-			}else if(sq.is_locked()){
-			    BRUTE_DEBUG std::cerr << "...square locked -- backing again\n";
-			}else if(b[row][col].size()==1){
-			    // for aesthetics while printing boards
-			    BRUTE_DEBUG std::cerr << "...size(1)       -- clearing to 0, backing again.\n";
-			    b[row][col].set_val(0,false);
-			}else{
-			    BRUTE_DEBUG std::cerr << "DANGER DANGER WILL ROBINSON\n";
-			}
-		    }while(which>=0);
-		    if(which==-1){
-			// we failed and backed up off the front!
-			BRUTE_DEBUG std::cerr << "Backed up off the front returning false\n";
-			BRUTE_DEBUG std::cerr << "valid: " << valid << '\n';
-			return false;
-		    }
-		    continue;	// skip incrementing which since we backed.
-		} else{
-		    square& sq=b[row][col];
-		    sq.set_val(sq[0],false);
-		}
-	    }
-	    which++;
-
-	    // cell was locked or chose a value, go to next cell
-	}
-    }
-    set_squares=N*N;
-    return true;
-}
-
-/*!
- * This routine uses the same algorithm as brute_forch_solution, but after
- * finding one solution, it remembers it and then trys to remove the previous
+ * This routine looks for solutions using a brute force algorithm. After
+ * finding one solution, it optionally 
+ * remembers it and then trys to remove the previous
  * found value from each square that isn't locked in turn to see if we find
  * another solution.  You might actually find a lot of solutions if you 
- * set stopafter2 false, but you are unlikely to find all solutions, since that
- * would take a more complex algorithm.  We really don't care to find ALL
- * solutions, this is used when digging out a generated board to see if we've
- * dug out too many and have created a puzzle with more than one solution.  We
- * don't need to know more than that there is more than one solution, so the
- * additional data structures and execution time to find all is not required.
- * \param stopafter2 this bool, defaulting to true tells the checker to quit after finding 2 solutions if true, or to look for all if false.
- * \return size_t the number of found solutions--this is always 0, 1, or 2 unless you set stopafter2 false.
+ * set how_many to -1 (like millions and millions!) We really don't care to
+ * find ALL * solutions, this is used when digging out a generated board to see
+ * if we've * dug out too many and have created a puzzle with more than one
+ * solution.  We don't need to know more than that there is more than one
+ * solution, so the additional data structures and execution time to find all
+ * is not required.
+ * \param how_many number of solutions to find. -1 means all, 2 is common just
+ * to see if there is more than 1, and 1 is used to find A solution.
+ * \param return_board Normally this routine works on a copy of the board
+ * leaving the board untouched. If this is set to true (default false) or
+ * when how_many is 1, we assign the last found solution to our board
+ * \return size_t the number of found solutions--this is always 0, 1, or up
+ * to how_many
  */
 template<const unsigned int N>
 size_t
-board<N>::brute_force_check(bool stopafter2)
+board<N>::brute_force_solution(ssize_t how_many,bool return_board)
 {
+    // on entrance pvals are all set because constructors that take strings
+    // call update_pvals()
     BRUTE_CHECK_DEBUG std::cerr << "brute force check ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     BRUTE_CHECK_DEBUG std::cerr << "brute_force_check() got this board: \n";
     BRUTE_CHECK_DEBUG print_large();
-    BRUTE_CHECK_DEBUG print_just_pvals();
 
-    std::vector<std::vector<size_t>> sols;
-    bool backed=false;
+    bool backed_up=false;
     size_t row, col, solutions=0;
-    ssize_t which=0,firstwhich=0;
-    const ssize_t max=N*N;
-    board<N> checkb=*this;
+    ssize_t target_square=0,	// idx from first_target to N*N through squares
+	    first_target=0;	// First place not locked with possibilities > 1
+    const ssize_t max=N*N;	// number of squares in board
+    board<N> checkb=*this;	// get copy of board
     // now find first square not locked with more than 1 possibility
-    for(firstwhich=0;firstwhich<max;firstwhich++){
-	square& sq=checkb.b[firstwhich/N][firstwhich%N];
-	if(sq.size()>1 && !sq.is_locked()){
-	    // we found first place to change.  Note if locked, there should only
-	    // be one, so the check is redundant, but something may change later,
-	    // so I code defensively.
-	    break;
-	}
+    BRUTE_CHECK_DEBUG{
+	std::cerr << "calling first_target to look for first unlocked square"
+	    " with more than one possibility\n";
     }
-    BRUTE_CHECK_DEBUG std::cerr << "first firstwhich is " << firstwhich << '\n';
 
-    if(valid){
-	BRUTE_CHECK_DEBUG std::cerr << "top of loop outside of while valid\n";
-	while((solutions<2||!stopafter2)){
-	    while(which!=max){
-		row=which/N;
-		col=which%N;
-		square& whichsq=checkb.b[row][col];
-		BRUTE_CHECK_DEBUG std::cerr << "looking at " << whichsq;
-		if(!whichsq.is_locked()){
+    // This part is just an optimization to skip any cells at the beginning
+    // that are locked or only have one pval
+    first_target=get_first_target(first_target,checkb);
+    if(first_target<max){
+	row=target_square/N;
+	col=target_square%N;
+	square& target_square_sq=checkb.b[row][col];
+	target_square_sq.set_val(target_square_sq[0],false);
+	target_square_sq.clear_pval_val(target_square_sq.get_val());
+	target_square=first_target+1;
+	BRUTE_CHECK_DEBUG{
+	    std::cerr << "first target is " << print_sq_rcp(&target_square_sq)
+		<< '\n';
+	}
+    }else{
+	BRUTE_CHECK_DEBUG std::cerr << "first target not found - board already solved? aborting\n";
+	return 0;
+    }
+
+    if(valid){	// if not a valid puzzle i.e. same num twice on a line no point
+	while(solutions<static_cast<size_t>(how_many)){ // our brute solver is in this loop
+	    BRUTE_CHECK_DEBUG{
+		std::cerr << "solutions main loop outside of solver\n"
+		    "there are " << solutions << " solutions so far\n";
+	    }
+	    while(target_square!=max){ // this loop IS the solver
+		row=target_square/N;
+		col=target_square%N;
+		square& target_square_sq=checkb.b[row][col];
+		BRUTE_CHECK_DEBUG{
+		    std::cerr << "  " << print_sq_rc(&target_square_sq)
+			<< ", locked: " << std::boolalpha
+			<< target_square_sq.is_locked() << '\n';
+		}
+		if(!target_square_sq.is_locked()){
 		    // square not locked, so try to deal with it.
-		    BRUTE_CHECK_DEBUG std::cerr << "square not locked\n";
-		    if(!backed){
-			BRUTE_CHECK_DEBUG std::cerr << "backed is false, calling generate_pvals\n";
+		    BRUTE_CHECK_DEBUG{
+			std::cerr << "  square not locked so dealing with it\n";
+		    }
+		    if(!backed_up){
 			checkb.generate_pvals(row,col,false);
-			if(which==firstwhich && sols.size()!=0){ //i.e. did we already find one solution
-			    BRUTE_CHECK_DEBUG std::cerr << "Pulling values from other solutions from this square: ";
-				for(size_t ctr=0;ctr<sols.size();ctr++){
-				    whichsq.clear_pval_val(sols[ctr][which]);
-				    BRUTE_CHECK_DEBUG std::cerr << ' ' << sols[ctr][which];
-				}
-				BRUTE_CHECK_DEBUG std::cerr << "--should be pulled now: " << whichsq;
+			BRUTE_CHECK_DEBUG{
+			    std::cerr << "    haven't backed, so calling "
+				"generate_pvals\n      "
+				<< print_sq_rcp(&target_square_sq) << '\n';
 			}
 		    }else{
-			BRUTE_CHECK_DEBUG std::cerr << "not calling generate_pvals() since backed is true--setting backed back to false\n";
-			backed=false;
+			// here backed was true, so we are dealing with the
+			// existing pvals with the last used val taken out,
+			// so we don't call generate_pvals because that would
+			// mess it up! We do set backed to false, so as we
+			// walk forward again we can generate pvals for
+			// successive squares until we either get a solution
+			// or hit a square with 0 possible values and have
+			// to back up again and try something different.
+			BRUTE_CHECK_DEBUG{
+			    std::cerr << "    not calling generate_pvals()"
+				" since we backed\n";
+			}
+			backed_up=false;
 		    }
-		    if(!whichsq.size()){
-			BRUTE_CHECK_DEBUG std::cerr << "square has no more pvals, rewinding: " << whichsq;
+		    if(target_square_sq.size()){
+			// target square has pvals try next val
+			// we don't take the pval out until it fails
+			// that is done while backing up
+			BRUTE_CHECK_DEBUG{
+			    std::cerr << "      setting val to first pval, "
+				<< target_square_sq[0] << '\n';
+			}
+			target_square_sq.set_val(target_square_sq[0],false);
+		    }else{ // backing up
+			BRUTE_CHECK_DEBUG{
+			    std::cerr << "        no more pvals, rewinding: "
+				<< print_sq_rcp(&target_square_sq) << '\n';
+			}
 			// There's no more vals, we'll have to rewind.
-			backed=true;
-			do{
-			    which--;
-			    if(which>=0){
-				backed_count++;
-				row=which/N;
-				col=which%N;
-				square &whichsq=checkb.b[row][col];
-				BRUTE_CHECK_DEBUG std::cerr << "    backed up: now : " << whichsq;
-				if(!whichsq.is_locked() && whichsq.size()>1){
+			backed_up=true;
+			target_square--;
+			while(target_square!=-1){
+			    backed_count++;
+			    if(target_square>=first_target){
+				row=target_square/N;
+				col=target_square%N;
+				square &target_square_sq=checkb.b[row][col];
+				BRUTE_CHECK_DEBUG{
+				    std::cerr << "    backed up to "
+					<< print_sq_rcp(&target_square_sq)
+					<< '\n';
+				}
+				if(!target_square_sq.is_locked()
+					&& target_square_sq.size() > 1){
 				    // backing up we skip locked since we can't
-				    // change them, and cells with only one value
-				    // since we would have already tried them.
-				    // Then on the cell we backed up to, we pull
-				    // the // value we tried out of pvals and set
-				    // the val to zero so that at the top of the
-				    // loop we'll try a different value.
-				    BRUTE_CHECK_DEBUG std::cerr << "...found next: " << whichsq << "    -- clearing val from pvals, setting val to 0 and breaking out.\n";
-				    whichsq.clear_pval_val(whichsq.get_val());
-				    whichsq.set_val(0,false);
+				    // change them and cells with only one
+				    // value since we already tried that value.
+				    // On the cell we back to, we pull out the
+				    // value we last tried from pvals and set
+				    // val to 0 so that at the top of the loop
+				    // we will try a different value.
+				    target_square_sq.clear_pval_val(target_square_sq.get_val());
+				    target_square_sq.set_val(0,false);
+				    BRUTE_CHECK_DEBUG{
+					std::cerr << "      found next    --"
+					    " clear current pval, set value"
+					    " to 0 and break out.\n"
+					    << print_sq_rcp(&target_square_sq) 
+					    << '\n';
+				    }
 				    break;
-				}else if(whichsq.size()==1){
-				    // n.b. we set val to 0 so generate_pvals will
-				    // work correctly, but don't break out, we're
-				    // not done backing up.
-				    BRUTE_CHECK_DEBUG std::cerr << "...square has one pval, setting val to 0, backing again\n";
-				    whichsq.set_val(0,false);
-				}else if(whichsq.is_locked()){
-				    BRUTE_CHECK_DEBUG std::cerr << "...square locked -- backing again\n";
+				}else if(target_square_sq.is_locked()){
+				    BRUTE_CHECK_DEBUG{
+					std::cerr << "      square locked --"
+					    " backing again\n";
+				    }
+				}else if(target_square_sq.size()==1){
+				    // if we left a value in the square it 
+				    // would affect generation of pvals for
+				    // other squares, so as we back past it
+				    // we clear its value;
+				    BRUTE_CHECK_DEBUG{
+					std::cerr << "      size(1)       --"
+					    " clearing value to 0, backing"
+					    " again\n";
+				    }
+				    target_square_sq.set_val(0,false);
 				}else{
-				    // not locked or locked and size <1--shouldn't 
-				    // ever happen
 				    BRUTE_CHECK_DEBUG std::cerr << "DANGER DANGER WILL ROBINSON\n";
 				}
-			    }
-			}while(which>=0);
-			// When we fall out, it's either because which is -1 because we couldn't find a solution,
-			// or because we broke because we'd backed to a good candidate for change
-			if(which==-1){
-			    // we failed and backed up off the front!
-			    BRUTE_CHECK_DEBUG{
-				std::cerr << "backed off of front\n";
-			    }
-			    for(++firstwhich;firstwhich<max;firstwhich++){
-				square& sq=b[firstwhich/N][firstwhich%N];
-				if(sq.size()>1 && !sq.is_locked()){
-				    // we found first place to change.  Note if
-				    // locked, there should only be one, so the
-				    // check is redundant, but something may
-				    // change later, so I code defensively.
-				    break;
-				}
-			    }
-			    if(firstwhich>=max){
-				BRUTE_CHECK_DEBUG std::cerr << "backed up maxed out firstwhich: " << firstwhich << "\n";
+
+			    }else { // if haven't backed off front
+				// backed past first target, no more solns
 				return solutions;
 			    }
-			    which=0;
-			    checkb=*this;
-			    backed=false;
-			    BRUTE_CHECK_DEBUG{
-				std::cerr << "backed off front, firstwhich now: "
-				    << firstwhich << " set which to 0 and "
-				    << " checkb back to *this\n";
-			    }
+			    target_square--;
 			}
-			continue; // skip incrementing which since we backed or
-					// are starting over.
-		    } else{
-			// target square has pvals try next val
-			whichsq.set_val(whichsq[0],false);
+			// When we fall out, it's either because target_square
+			// is < first_target because we couldn't find a
+			// solution, or because we broke because we'd backed_up
+			// to a good candidate for change
+			if(target_square<first_target){
+			    // we failed and backed_up up off the front!
+			    // no more solutions (if any)
+			    BRUTE_CHECK_DEBUG{
+				std::cerr << "backed_up off of front,"
+				    " there are " << solutions
+				    << " solutions\n";
+			    }
+			    return solutions;
+			}
+			continue; // skip incrementing target_square since
+				  // we backed_up or are starting over.
 		    }
 		}
-		which++;
+		target_square++;
 		// cell was locked or chose a value, go to next cell
-	    } // while(which!=max)
-	    if(which==max){
-		BRUTE_CHECK_DEBUG std::cerr << "brute check found a potential solution (number: " << solutions+1 << ")\n";
-		BRUTE_CHECK_DEBUG checkb.print();
-		std::vector<size_t> the_solution;
-		for(size_t ctr=0;ctr<N*N;ctr++){
-		    the_solution.push_back(checkb.b[ctr/N][ctr%N].get_val());
-		}
-		BRUTE_CHECK_DEBUG{
-		    std::cerr << "looking at solution: \"";
-		    for(size_t ctr=0;ctr<the_solution.size();ctr++){
-			std::cerr << the_solution[ctr];
-		    }
-		    std::cerr << "\"\n";
-		}
-		if(std::find(sols.begin(),sols.end(),the_solution)==sols.end()){
-		    BRUTE_CHECK_DEBUG std::cerr << "not already saved\n";
-		    sols.push_back(the_solution);
-		    solutions++;
-		}else{
-		    BRUTE_CHECK_DEBUG std::cerr << "already saved\n";
-		}
-		for(++firstwhich;firstwhich<max;firstwhich++){
-		    square& sq=b[firstwhich/N][firstwhich%N];
-		    if(sq.size()>1 && !sq.is_locked()){
-			// we found first place to change.  Note if
-			// locked, there should only be one, so the
-			// check is redundant, but something may
-			// change later, so I code defensively.
-			break;
-		    }
-		}
-		if(firstwhich>=max){
-		    BRUTE_CHECK_DEBUG std::cerr << "found solution, maxed out firstwhich: " << firstwhich << '\n';
-		    return solutions;
-		}
-		checkb=*this;
-		which=0;
-		backed=false;
-		BRUTE_CHECK_DEBUG{
-		    std::cerr << "after found solution, set firstwhich: "
-			<< firstwhich
-			<< ", set backed false, checkb to *this, and which 0\n";
-		}
+	    } // while(target_square!=max)
+	    solutions++;
+	    if(solutions<static_cast<size_t>(how_many)){
+		// note to future self: This sets us up to keep going
+		// looking for future solutions, but if we have already
+		// found all we are looking at, we don't want to mess
+		// this last one up.  Right now it only really affects
+		// the case where how_many==1, so just below we can
+		// assign this solved board to the real board and pass
+		// it out solved. Later we might do the same with others
+		// with maybe a flag to control the behavior.
+		target_square--;
+		row=target_square/N;
+		col=target_square%N;
+		square &target_square_sq=checkb.b[row][col];
+		backed_up=true;
+		target_square_sq.clear_pvals();
+		target_square_sq.set_val(0,false);
 	    }
+	} // while(solutions<how_many)
+	if(how_many==1 || return_board){
+	    *this=checkb;
 	}
-    }
-    BRUTE_CHECK_DEBUG std::cerr << "fell off bottom, maxed out firstwhich: " << firstwhich << '\n';
+    } // if(valid)
+    BRUTE_CHECK_DEBUG std::cerr << "fell off bottom, maxed out first_target: " << first_target << '\n';
     return solutions;
 }
 
-/*!
- * This routine is called back from the various solution strategies so
- * that we can associate a level and a name with each method.
- * \param level intended to be a difficulty level to help with categorizing puzzles
- * \param name whatever name we want to use, things like "x-wing" and "naked triple"
- * \param ssp a pointer to the solution method
- */
-template<const unsigned int N>
-void
-board<N>::register_strategy(size_t level,std::string name,sudoku_method<N>* ssp)
-{
-    REGISTER_STRATEGY_DEBUG std::cerr << "board<" << N << ">::register_strategy(" << level << ", \"" << name << "\", ssp)\n";
-    if(strategies.find(level)==strategies.end()){
-	REGISTER_STRATEGY_DEBUG std::cerr << "  creating strategies[" << level << "]\n";
-	strategies[level];
-    }
-    if(strategies[level].find(name)==strategies[level].end()){
-	REGISTER_STRATEGY_DEBUG std::cerr << "  creating strategies[" << level << "][\"" << name << "\"]\n";
-	strategies[level][name]=ssp;
-	REGISTER_STRATEGY_DEBUG std::cerr << "  strategies[" << level << "].size(): " << strategies[level].size() << '\n';
-    }
-}
-
-/*!
- * For a given level of solution strategies, as specified when registering
- * the strategy, it returns the count of all the times they were 
- * successfully applied where success means that something, either val or
- * pvals changed in one or more squares
- * \param level the level to get the count for
- */
-template<const unsigned int N>
-size_t
-board<N>::get_strategy_counts(size_t level)
-{
-    size_t retval=0;
-
-    if(strategies.find(level)==strategies.end()){
-	return 0;
-    }else{
-	typename std::map<std::string,class sudoku_method<N>*>::iterator it;
-	for(it=strategies[level].begin();it!=strategies[level].end();it++){
-	    std::cerr << it->first << " has a count of " << it->second->get_count() << '\n';
-	    retval+=it->second->get_count();
-	}
-	return retval;
-    }
-}
-
-/*!
- * For a given level of solution strategies, as specified when registering
- * the strategy, it returns the count of all the times they were 
- * successfully applied where success means that something, either val or
- * pvals changed in one or more squares
- */
-template<const unsigned int N>
-void
-board<N>::clear_strategy_counts()
-{
-    for(size_t ctr=0;ctr<strategies.size();ctr++){
-	typename std::map<std::string,class sudoku_method<N>*>::iterator it;
-	for(it=strategies[ctr].begin();it!=strategies[ctr].end();it++){
-	    it->second->clear_count();
-	}
-    }
-}
 #endif

@@ -116,7 +116,7 @@ purge_from_set - given a set of squares, and a set of vals, discerns the
 	all the values in the val set.
 purge_block_except - given a block number, a vector of squares and a val, walk
 	through all the squares in the block and if they are not in the vector
-	of squares, remove val from their pvals.  This is used from intersection.
+	of squares, remove val from their pvals. This is used from intersection.
 purge_row_except - same as above except for row, not block
 purge_column_except - same as above except for column
 purge_set -given a row and column and a set of values, purge all of those
@@ -164,3 +164,98 @@ purge_row_col_sets - given a group type, either GT_ROW or GT_COLUMN, a set of
 6 . . . . . . . . .
 7 . . . * . . . . .
 8 . . . . . . . . .
+
+Heuristics
+
+o Naked Single 
+	If a square only has one pval, then it is set to that val
+o Hidden Single
+	If only one cell in a group contains a particular pval, say 7, then
+it gets set to that value.
+o Naked Double
+	Two cells in a group have only the same two pvals. One of the cells
+has to get one, and the other cell has to get the other. That means every
+other cell in that group can have those two pvals removed.
+o Hidden Double
+	Two cells in a group are the only ones who have two particular pvals.
+One of them will have to have one of the values and the other the other,
+although we don't know which is which. That means that we can remove all
+other pvals from those two cells. That turns them into a naked double, although
+since they were the only two with that pair of pvals, that won't result in
+pvals being removed from any other cells in the group.
+o Naked Triple
+	Three cells in a group have only the same three pvals. That means we
+can remove those three pvals from every other cell in the group. This works
+even if they don't all have all three, i.e. one could have {3,7}, another,
+{1,7} and another {1,3}. All other cells in the group could have 1, 3, and 7
+removed from their pvals.
+o Hidden Triple
+	Three cells in a group are the only ones that have a set of three
+pvals, even though they may also have other possible values. All the other
+possible values in the three cells can be removed.
+o Naked Quad
+	Four cells in a group have only the same four pvals. That means we
+can remove those four pvals from every other cell in the group. This works
+even if they don't all have all four.
+o Hidden Quad
+	Four cells in a group are the only ones that have a set of four
+pvals, even though they may also have other possible values. All the other
+possible values in the four cells can be removed.
+o Intersection
+	When all of the possibilities (either two or three) for a value in a
+group (a row, column, or block), are also in another group, then that value
+can be removed from the second group. One of the things that intersect will
+always be a block, and the other will be either a row or column. That means
+that there are four possible types, row-block, block-row, column-block, and
+block-column. If the block is the one that only has two or three of the value
+in its possibilities, then the name starts with block-, otherwise it starts with
+row- or column-, for example:
+.-------.-------.-------.
+| * * * | * * * | - X X |
+|       |       | - - - | block-row intersection
+|       |       | - - - | block contains value in two places both in same row
+'-------'-------'-------'
+
+ X : A cell which may have the value X
+ - : A cell which does not contain a candidate X
+ * : Cells from which we can eliminate X
+
+	It works the same when the shared cells are the only ones in the row too
+.-------.-------.-------.
+| - - - | - - - | X - X |
+|       |       | * * * | row-block intersection
+|       |       | * * * | row contains value in two possible places
+'-------'-------'-------'
+	And the same works for columns as well, of course.
+.-------.                    .-------.
+|     - |                    |   *   |
+|     - | column-block       |   *   | block-column
+|     - | intersection       |   *   | intersection
+.-------'                    '-------'
+| * * X | column only has 3  | - X - | block only has two possible locations
+| * * X | possible locations | - X - | for the value, both also in the column
+| * * X | for value all in   | - - - |
+'-------' the block          '-------'
+|     - |                    |   *   |
+|     - |                    |   *   |
+|     - |                    |   *   |
+'-------'                    '-------'
+
+inline the purge routines???
+
+get_block
+           N
+ 012 345 678 
+0
+1 0   1   2
+2
+
+3
+4 3   4   5
+5
+
+6
+7 6   7   8
+8 <-N
+
+(row/3)*3+col/3

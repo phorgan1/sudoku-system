@@ -5,37 +5,27 @@ int
 main()
 {
     const size_t sz=9;
-    const size_t numgens=1000000;
-    board<sz> b,b2;
-    b.generate();
-    if(!b.get_valid()){
-	std::cout << "bad puzzle\n";
-    }else{
-	std::cout << "valid puzzle\n";
-    }
+    const size_t numgens=100000;
+    board<sz> b;
     time_t first, last;
     first=time(&first);
+    size_t bp=0,gp=0;
     for(size_t ctr=0;ctr<numgens;ctr++){
-	if(b.generate()==false){
-	    std::cout << "generated a bad board\n";
+	b.generate();
+	if(!b.get_valid()){
+	    bp++;
+	}else{
+	    gp++;
 	}
     }
     last=time(&last);
     std::cout << "generated " << numgens << " boards in " << last-first << " seconds\n";
-    std::cout << "    thats " << 1000000.0*double(last-first)/numgens << "µs per board\n";
+    std::cout << "  bad puzzles : " << bp << '\n';
+    std::cout << "  good puzzles: " << gp << '\n';
+    std::cout << "    that's " << 1000000.0*double(last-first)/numgens << "µs per board\n";
     if(last!=first){
 	std::cout << "    or " << numgens/(last-first) << " boards/second\n";
     }
-
-    if(!b.get_valid()){
-	std::cout << "bad puzzle\n";
-    }else{
-	std::cout << "valid puzzle\n";
-    }
-    b.print();
-    b2=b;
-    b2.print();
-    std::cout << "There are " << b2.count() << " cells set\n";
-    
-    exit(0);
+    b.print_large();
+    return 0;
 }

@@ -17,7 +17,7 @@ main(int argc, char** argv)
 	    " or .......12 ....35... ...6...7. etc.\n";
 
 
-	exit(1);
+	return 1;
     }
     if(argc==2){
 	in=argv[1];
@@ -34,12 +34,13 @@ main(int argc, char** argv)
 	b.print_large();
 	b.print();
 	b.print_counts();
+	std::cerr << "solved? " << b.is_solved() << '\n';
     }catch(board<9>::board_shortstring){
 	std::cerr << "String too short\n";
-	exit(1);
+	return 1;
     }catch(board<9>::board_longstring){
 	std::cerr << "String too long\n";
-	exit(1);
+	return 1;
     }
-
+    return 0;
 }
